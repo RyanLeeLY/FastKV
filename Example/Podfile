@@ -1,0 +1,11 @@
+use_frameworks!
+
+target 'FastKV_Example' do
+  pod 'FastKV', :path => '../'
+
+  target 'FastKV_Tests' do
+    inherit! :search_paths
+
+    
+  end
+end
