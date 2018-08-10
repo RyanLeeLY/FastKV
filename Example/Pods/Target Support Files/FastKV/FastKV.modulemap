@@ -1,0 +1,6 @@
+framework module FastKV {
+  umbrella header "FastKV-umbrella.h"
+
+  export *
+  module * { export * }
+}

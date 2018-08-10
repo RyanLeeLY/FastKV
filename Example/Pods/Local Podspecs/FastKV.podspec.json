@@ -1,0 +1,22 @@
+{
+  "name": "FastKV",
+  "version": "0.1.0",
+  "summary": "A short description of FastKV.",
+  "description": "TODO: Add long description of the pod here.",
+  "homepage": "https://github.com/yao.li/FastKV",
+  "license": {
+    "type": "MIT",
+    "file": "LICENSE"
+  },
+  "authors": {
+    "yao.li": "yao.li@cootek.cn"
+  },
+  "source": {
+    "git": "https://github.com/yao.li/FastKV.git",
+    "tag": "0.1.0"
+  },
+  "platforms": {
+    "ios": "8.0"
+  },
+  "source_files": "FastKV/Classes/**/*"
+}
