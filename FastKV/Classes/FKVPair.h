@@ -43,7 +43,7 @@ typedef NS_ENUM(NSUInteger, FKVPairType) {
 
 @property(copy, nonatomic) NSString *stringVal;
 
-@property(assign, nonatomic) NSData *binaryVal;
+@property(copy, nonatomic) NSData *binaryVal;
 
 @end
 

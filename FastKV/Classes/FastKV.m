@@ -250,6 +250,9 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + sizeof(version) + si
 }
 
 - (NSNumber *)_numberValue:(FKVPair *)kv{
+    if (!kv) {
+        return nil;
+    }
     switch (kv.valueType) {
         case FKVPairTypeBOOL:   return @(kv.boolVal);
         case FKVPairTypeInt32:  return @(kv.int32Val);
@@ -257,7 +260,7 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + sizeof(version) + si
         case FKVPairTypeFloat:  return @(kv.floatVal);
         case FKVPairTypeDouble: return @(kv.doubleVal);
         case FKVPairTypeData:
-            return [self _unarchiveValueForClass:NSNumber.class fromItem:kv];
+            return [self _unarchiveValueForClass:[NSNumber class] fromItem:kv];
         default: return nil;
     }
 }

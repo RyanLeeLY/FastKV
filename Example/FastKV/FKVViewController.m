@@ -30,39 +30,41 @@
 
 - (void)test {
     FKVPair *fkp = [[FKVPair alloc] init];
-    fkp.valueType = FKVPairTypeString;
+    fkp.valueType = FKVPairTypeData;
     fkp.objcType = @"NSString";
     fkp.key = @"testlytestlytestlytestly";
     fkp.stringVal = @"sss";
+    NSData *numberData = [NSKeyedArchiver archivedDataWithRootObject:@1];
+    fkp.binaryVal = numberData;
+    
     NSData *data = [fkp representationData];
     
-    NSData *numberData = [NSKeyedArchiver archivedDataWithRootObject:@1];
     FKVPair *pair = [FKVPair parseFromData:data error:nil];
     NSLog(@"%@", pair);
 }
 
 - (IBAction)eventFromButton:(UIButton *)sender {
     NSMutableArray *keyArray = [NSMutableArray array];
-    for (int i=0; i<5; i++) {
+    for (int i=0; i<5000; i++) {
         NSString *key = [NSString stringWithFormat:@"testfkv%@", @(i)];
         [keyArray addObject:key];
     }
     if (sender.tag == 1) {
         [self logTimeTakenToRunBlock:^{
             [keyArray enumerateObjectsUsingBlock:^(id  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-                [[FastKV defaultFastKV] setObject:@(idx) forKey:obj];
+                [[FastKV defaultFastKV] setInteger:idx forKey:obj];
             }];
         } withPrefix:@"FKV"];
         
     } else if (sender.tag == 2) {
-        id integer = [[FastKV defaultFastKV] objectOfClass:NSNumber.class forKey:@"testfkv1"];
+        id integer = [[FastKV defaultFastKV] objectOfClass:NSNumber.class forKey:@"testfkv4800"];
         NSLog(@"%@", integer);
     } else if (sender.tag == 3) {
         
         [self logTimeTakenToRunBlock:^{
-        [keyArray enumerateObjectsUsingBlock:^(id  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-            [[NSUserDefaults standardUserDefaults] setObject:obj forKey:obj];
-        }];
+            [keyArray enumerateObjectsUsingBlock:^(id  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+                [[NSUserDefaults standardUserDefaults] setInteger:idx forKey:obj];
+            }];
         } withPrefix:@"UserDefaults"];
     }
 }

@@ -170,43 +170,13 @@
             NSData *data = self.binaryVal;
             [dataM appendBytes:[self.objcType UTF8String] length:objcTypeLength];
             [dataM appendBytes:[self.key UTF8String] length:keyLength];
-            [dataM appendData:[data copy]];
+            [dataM appendData:data];
             break;
         }
     }
     
     return [dataM copy];
 }
-
-//- (instancetype)initWithCoder:(NSCoder *)coder {
-//    self = [super init];
-//    if (self) {
-//        self.key = [coder decodeObjectForKey:@"key"];
-//        self.objcType = [coder decodeObjectForKey:@"objcType"];
-//        self.valueType = [coder decodeIntegerForKey:@"valueType"];
-//        self.boolVal = [coder decodeBoolForKey:@"boolVal"];
-//        self.int32Val = [coder decodeInt32ForKey:@"int32Val"];
-//        self.int64Val = [coder decodeInt64ForKey:@"int64Val"];
-//        self.floatVal = [coder decodeFloatForKey:@"floatVal"];
-//        self.doubleVal = [coder decodeDoubleForKey:@"doubleVal"];
-//        self.stringVal = [coder decodeObjectForKey:@"stringVal"];
-//        self.binaryVal = [coder decodeObjectForKey:@"binaryVal"];
-//    }
-//    return self;
-//}
-//
-//- (void)encodeWithCoder:(NSCoder *)aCoder {
-//    [aCoder encodeObject:self.key forKey:@"key"];
-//    [aCoder encodeObject:self.objcType forKey:@"objcType"];
-//    [aCoder encodeInteger:self.valueType forKey:@"valueType"];
-//    [aCoder encodeBool:self.boolVal forKey:@"boolVal"];
-//    [aCoder encodeInt32:self.int32Val forKey:@"int32Val"];
-//    [aCoder encodeInt64:self.int64Val forKey:@"int64Val"];
-//    [aCoder encodeFloat:self.floatVal forKey:@"floatVal"];
-//    [aCoder encodeDouble:self.doubleVal forKey:@"doubleVal"];
-//    [aCoder encodeObject:self.stringVal forKey:@"stringVal"];
-//    [aCoder encodeObject:self.binaryVal forKey:@"binaryVal"];
-//}
 @end
 
 @implementation FKVPairList
