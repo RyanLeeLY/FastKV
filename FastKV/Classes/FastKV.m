@@ -17,7 +17,7 @@ const NSUInteger FastKVSeparatorStringLength = 8;
 static size_t   FastKVPageSize = 512 * 1024;
 static NSString *const FastKVMarkString = @"FastKV";
 static uint32_t FastKVVersion  = 1; // mmkv file format version
-static size_t  FastKVHeaderSize = 18; // sizeof("ALMMKV") + sizeof(version) + sizeof(content_size)
+static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + sizeof(version) + sizeof(content_size)
 
 @interface FastKV () {
     int _fd;
@@ -189,6 +189,7 @@ static size_t  FastKVHeaderSize = 18; // sizeof("ALMMKV") + sizeof(version) + si
 #pragma mark - read: ObjC objects
 - (id)objectOfClass:(Class)cls forKey:(NSString *)key {
     FKVPair *kv = [self _itemForKey:key];
+    Class octype = [self _objCType:kv];
     
 #ifndef CASE_CLASS
 #define CASE_CLASS(cls, type) if (cls == type.class || [cls isSubclassOfClass:type.class])
@@ -198,10 +199,7 @@ static size_t  FastKVHeaderSize = 18; // sizeof("ALMMKV") + sizeof(version) + si
         return [self _numberValue:kv];
     }
     CASE_CLASS(cls, NSString) {
-        if (kv.valueType == FKVPairTypeString) {
-            return kv.stringVal;
-        }
-        return [[self _numberValue:kv] stringValue];
+        return kv.stringVal;
     }
     CASE_CLASS(cls, NSData) {
         if (kv.valueType == FKVPairTypeData) {
@@ -210,7 +208,6 @@ static size_t  FastKVHeaderSize = 18; // sizeof("ALMMKV") + sizeof(version) + si
         return nil;
     }
     CASE_CLASS(cls, NSDate) {
-        Class octype = [self _objCType:kv];
         CASE_CLASS(octype, NSDate) {
             id val = [self _unarchiveValueForClass:NSDate.class fromItem:kv];
             if (val == nil) {
@@ -222,7 +219,6 @@ static size_t  FastKVHeaderSize = 18; // sizeof("ALMMKV") + sizeof(version) + si
         return nil;
     }
     CASE_CLASS(cls, NSURL) {
-        Class octype = [self _objCType:kv];
         CASE_CLASS(octype, NSURL) {
             id val = [self _unarchiveValueForClass:NSURL.class fromItem:kv];
             if (val == nil && kv.valueType == FKVPairTypeString) {
@@ -233,7 +229,7 @@ static size_t  FastKVHeaderSize = 18; // sizeof("ALMMKV") + sizeof(version) + si
         return nil;
     }
     
-    return [self _unarchiveValueForClass:NSURL.class fromItem:kv];
+    return [self _unarchiveValueForClass:octype fromItem:kv];
 }
 
 #pragma mark - read: private
@@ -256,8 +252,8 @@ static size_t  FastKVHeaderSize = 18; // sizeof("ALMMKV") + sizeof(version) + si
 - (NSNumber *)_numberValue:(FKVPair *)kv{
     switch (kv.valueType) {
         case FKVPairTypeBOOL:   return @(kv.boolVal);
-        case FKVPairTypeInt32: return @(kv.int32Val);
-        case FKVPairTypeInt64: return @(kv.int64Val);
+        case FKVPairTypeInt32:  return @(kv.int32Val);
+        case FKVPairTypeInt64:  return @(kv.int64Val);
         case FKVPairTypeFloat:  return @(kv.floatVal);
         case FKVPairTypeDouble: return @(kv.doubleVal);
         case FKVPairTypeData:
@@ -329,20 +325,22 @@ static size_t  FastKVHeaderSize = 18; // sizeof("ALMMKV") + sizeof(version) + si
     FKVPair *kv = [[FKVPair alloc] init];
     kv.key = key;
     kv.objcType = NSStringFromClass([obj class]);
-    kv.valueType = FKVPairTypeData;
     
     if ([obj isKindOfClass:[NSString class]]) {
         kv.stringVal = (NSString *)obj;
-    } else if ([obj isKindOfClass:[NSNumber class]]) {
-        kv.stringVal = [(NSNumber *)obj stringValue];
+        kv.valueType = FKVPairTypeString;
     } else if ([obj isKindOfClass:[NSData class]]) {
         kv.binaryVal = (NSData *)obj;
+        kv.valueType = FKVPairTypeData;
     } else if ([obj isKindOfClass:[NSDate class]]) {
         kv.doubleVal = [((NSDate *)obj) timeIntervalSince1970];
+        kv.valueType = FKVPairTypeDouble;
     } else if ([obj isKindOfClass:[NSURL class]]) {
         kv.stringVal = [(NSURL *)obj absoluteString];
+        kv.valueType = FKVPairTypeString;
     } else {
         kv.binaryVal = [NSKeyedArchiver archivedDataWithRootObject:obj]; // should throw if exception.
+        kv.valueType = FKVPairTypeData;
     }
     
     [self append:kv];
@@ -381,8 +379,8 @@ static size_t  FastKVHeaderSize = 18; // sizeof("ALMMKV") + sizeof(version) + si
     _dict[item.key] = item;
     
     NSMutableData *data = [NSMutableData data];
-    [data appendData:[NSKeyedArchiver archivedDataWithRootObject:item]];
-    [data appendBytes:FastKVSeparatorString length:8];
+    [data appendData:[item representationData]];
+    [data appendBytes:FastKVSeparatorString length:FastKVSeparatorStringLength];
     
     if (data.length + _cursize >= _mmsize) {
         [self reallocWithExtraSize:data.length];
@@ -391,7 +389,7 @@ static size_t  FastKVHeaderSize = 18; // sizeof("ALMMKV") + sizeof(version) + si
         _cursize += data.length;
         
         uint64_t dataLength = _cursize - FastKVHeaderSize;
-        memcpy((char *)_mmptr + 10, &dataLength, 8);
+        memcpy((char *)_mmptr + sizeof(uint32_t) + [FastKVMarkString lengthOfBytesUsingEncoding:NSUTF8StringEncoding], &dataLength, 8);
     }
     pthread_mutex_unlock(&_mutexLock);
 }

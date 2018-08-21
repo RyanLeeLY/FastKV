@@ -17,12 +17,19 @@ typedef NS_ENUM(NSUInteger, FKVPairType) {
     FKVPairTypeData,
 };
 
-@interface FKVPair : NSObject <NSCoding>
-@property(copy, nonatomic) NSString *key;
+@protocol FKVCoding <NSObject>
++ (id)parseFromData:(NSData *)data error:(NSError *__autoreleasing *)error;
+
+- (NSData *)representationData;
+@end
+
+@interface FKVPair : NSObject <FKVCoding>
+
+@property(assign, nonatomic) FKVPairType valueType;
 
 @property(copy, nonatomic) NSString *objcType;
 
-@property(assign, nonatomic) FKVPairType valueType;
+@property(copy, nonatomic) NSString *key;
 
 @property(assign, nonatomic) BOOL boolVal;
 
@@ -40,10 +47,6 @@ typedef NS_ENUM(NSUInteger, FKVPairType) {
 
 @end
 
-@interface FKVPairList : NSObject
+@interface FKVPairList : NSObject <FKVCoding>
 @property(copy, nonatomic) NSMutableArray<FKVPair *> *items;
-
-+ (FKVPairList *)parseFromData:(NSData *)data error:(NSError *__autoreleasing *)error;
-
-- (NSData *)representationData;
 @end
