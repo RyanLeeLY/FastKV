@@ -280,6 +280,7 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
 #pragma mark - set: primitive types
 - (void)setBool:(BOOL)val forKey:(NSString *)key {
     FKVPair *kv = [[FKVPair alloc] init];
+    kv.fkv_version = FastKVVersion;
     kv.key = key;
     kv.boolVal = val;
     kv.objcType = @"NSNumber";
@@ -289,6 +290,7 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
 
 - (void)setInteger:(NSInteger)intval forKey:(NSString *)key {
     FKVPair *kv = [[FKVPair alloc] init];
+    kv.fkv_version = FastKVVersion;
     kv.key = key;
     kv.objcType = @"NSNumber";
     if (intval > INT_MAX) {
@@ -303,6 +305,7 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
 
 - (void)setFloat:(float)val forKey:(NSString *)key {
     FKVPair *kv = [[FKVPair alloc] init];
+    kv.fkv_version = FastKVVersion;
     kv.key = key;
     kv.floatVal = val;
     kv.objcType = @"NSNumber";
@@ -312,6 +315,7 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
 
 - (void)setDouble:(double)val forKey:(NSString *)key {
     FKVPair *kv = [[FKVPair alloc] init];
+    kv.fkv_version = FastKVVersion;
     kv.key = key;
     kv.doubleVal = val;
     kv.objcType = @"NSNumber";
@@ -322,6 +326,7 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
 - (void)setObject:(id)obj forKey:(NSString *)key {
     if (obj == nil) {
         FKVPair *kv = [[FKVPair alloc] init];
+        kv.fkv_version = FastKVVersion;
         kv.valueType = FKVPairTypeNil;
         kv.key = key;
         [self append:kv];
@@ -329,6 +334,7 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
     }
     
     FKVPair *kv = [[FKVPair alloc] init];
+    kv.fkv_version = FastKVVersion;
     kv.key = key;
     kv.objcType = NSStringFromClass([obj class]);
     
@@ -354,6 +360,7 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
 
 - (void)removeObjectForKey:(NSString *)key {
     FKVPair *kv = [[FKVPair alloc] init];
+    kv.fkv_version = FastKVVersion;
     kv.valueType = FKVPairTypeRemoved;
     kv.key = key;
     [self append:kv];
@@ -426,10 +433,10 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
     NSUInteger dataLength = data.length;
     
     size_t totalSize = dataLength + FastKVHeaderSize;
-    size_t newTotalSize = totalSize + size;
-    if (newTotalSize >= _mmsize) {
+    size_t neededSize = totalSize + size;
+    if (neededSize * 1.5 > _mmsize) {
         munmap(_mmptr, _mmsize);
-        [self reallocMMSizeWithNeededSize:totalSize];
+        [self reallocMMSizeWithNeededSize:neededSize];
         [self resetHeaderWithContentSize:0];
     }
     memcpy((char *)_mmptr + FastKVHeaderSize, data.bytes, dataLength);
@@ -438,10 +445,9 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
 }
 
 - (BOOL)reallocMMSizeWithNeededSize:(size_t)neededSize {
-    size_t allocationSize = FastKVPageSize;
-    int scale = (neededSize < FastKVPageSize * 8) ? 4 : 2;
-    while (allocationSize <= neededSize) {
-        allocationSize *= scale;
+    size_t allocationSize = 8;
+    while (allocationSize < neededSize * 2) {
+        allocationSize *= 2;
     }
     return [self mapWithSize:allocationSize];
 }

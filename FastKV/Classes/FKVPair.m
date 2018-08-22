@@ -8,6 +8,19 @@
 #import "FKVPair.h"
 #import "FastKV.h"
 
+/**
+ FKVPair Coding Data Format
+ 
+ //Header Segment//
+ valueType[NSUInteger] | version[uint32_t] | objcTypeLength[NSUInteger] | keyLength:[NSUInteger] | dataLength[NSUInteger]
+ 
+ //Content Segment//
+ objcType[Byte] | key[Byte] | data[Byte]
+ 
+ //Check Code//
+ CRC[uint16_t]
+ */
+
 @implementation FKVPair
 + (id)parseFromData:(NSData *)data error:(NSError *__autoreleasing *)error {
     if (data.length == 0) {
@@ -30,6 +43,11 @@
     [data getBytes:&valueType range:NSMakeRange(currentIndex, sizeof(FKVPairType))];
     currentIndex += sizeof(FKVPairType);
     pair.valueType = valueType;
+    
+    uint32_t fkv_version;
+    [data getBytes:&fkv_version range:NSMakeRange(currentIndex, sizeof(uint32_t))];
+    currentIndex += sizeof(uint32_t);
+    pair.fkv_version = fkv_version;
     
     NSUInteger objcTypeLength = 0;
     [data getBytes:&objcTypeLength range:NSMakeRange(currentIndex, sizeof(NSUInteger))];
@@ -106,6 +124,9 @@
     NSMutableData *dataM = [NSMutableData data];
     FKVPairType valueType = self.valueType;
     [dataM appendBytes:&valueType length:sizeof(FKVPairType)];
+    
+    uint32_t fkv_version = self.fkv_version;
+    [dataM appendBytes:&fkv_version length:sizeof(uint32_t)];
     
     NSUInteger objcTypeLength = [self.objcType lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
     [dataM appendBytes:&objcTypeLength length:sizeof(NSUInteger)];
@@ -196,16 +217,10 @@
         }
     }
     
+    // CRC check code
     uint16_t crc = [dataM fkv_crc16];
     [dataM appendBytes:&crc length:2];
     
-    if ([self.key isEqualToString:@"testfkv3961"]) {
-        
-    }
-    
-    if ([self.key isEqualToString:@"testfkv1334"]) {
-        
-    }
     return [dataM copy];
 }
 @end
