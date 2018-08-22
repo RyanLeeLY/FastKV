@@ -8,7 +8,9 @@
 #import <Foundation/Foundation.h>
 
 typedef NS_ENUM(NSUInteger, FKVPairType) {
-    FKVPairTypeBOOL = 0,
+    FKVPairTypeRemoved = 0,
+    FKVPairTypeNil,
+    FKVPairTypeBOOL,
     FKVPairTypeInt32,
     FKVPairTypeInt64,
     FKVPairTypeFloat,

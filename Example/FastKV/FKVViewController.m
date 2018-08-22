@@ -52,18 +52,21 @@
     if (sender.tag == 1) {
         [self logTimeTakenToRunBlock:^{
             [keyArray enumerateObjectsUsingBlock:^(id  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-                [[FastKV defaultFastKV] setInteger:idx forKey:obj];
+                [[FastKV defaultFastKV] setObject:obj forKey:obj];
             }];
         } withPrefix:@"FKV"];
         
     } else if (sender.tag == 2) {
-        id integer = [[FastKV defaultFastKV] objectOfClass:NSNumber.class forKey:@"testfkv4800"];
+        id integer = [[FastKV defaultFastKV] objectOfClass:NSString.class forKey:@"testfkv4800"];
+        
         NSLog(@"%@", integer);
     } else if (sender.tag == 3) {
+        [[FastKV defaultFastKV] removeObjectForKey:@"testfkv4800"];
+//        [[FastKV defaultFastKV] reset];
         
         [self logTimeTakenToRunBlock:^{
             [keyArray enumerateObjectsUsingBlock:^(id  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-                [[NSUserDefaults standardUserDefaults] setInteger:idx forKey:obj];
+                [[NSUserDefaults standardUserDefaults] setObject:obj forKey:obj];
             }];
         } withPrefix:@"UserDefaults"];
     }
@@ -75,8 +78,8 @@
     block();
     double b = CFAbsoluteTimeGetCurrent();
     
-    unsigned int m = ((b-a) * 1000.0f); // convert from seconds to milliseconds
+    unsigned long m = ((b-a) * 1000.0f); // convert from seconds to milliseconds
     
-    NSLog(@"fkv %@: %d ms", prefixString ? prefixString : @"Time taken", m);
+    NSLog(@"fkv %@: %lu ms", prefixString ? prefixString : @"Time taken", m);
 }
 @end

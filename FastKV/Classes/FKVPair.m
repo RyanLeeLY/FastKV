@@ -45,6 +45,9 @@
     currentIndex += keyLength;
     
     switch (valueType) {
+        case FKVPairTypeRemoved:
+        case FKVPairTypeNil:
+            break;
         case FKVPairTypeBOOL: {
             BOOL boolVal;
             [data getBytes:&boolVal range:NSMakeRange(currentIndex, dataLength)];
@@ -103,6 +106,15 @@
     
     NSUInteger dataLength;
     switch (valueType) {
+        case FKVPairTypeRemoved:
+        case FKVPairTypeNil: {
+            dataLength = 0;
+            [dataM appendBytes:&dataLength length:sizeof(NSUInteger)];
+            
+            [dataM appendBytes:[self.objcType UTF8String] length:objcTypeLength];
+            [dataM appendBytes:[self.key UTF8String] length:keyLength];
+            break;
+        }
         case FKVPairTypeBOOL: {
             dataLength = (NSUInteger)sizeof(BOOL);
             [dataM appendBytes:&dataLength length:sizeof(NSUInteger)];

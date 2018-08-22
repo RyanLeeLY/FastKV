@@ -14,7 +14,7 @@
 const char * FastKVSeparatorString = "$FastKV$";
 const NSUInteger FastKVSeparatorStringLength = 8;
 
-static size_t   FastKVPageSize = 512 * 1024;
+static size_t   FastKVPageSize = 8 * 1024; // bytes
 static NSString *const FastKVMarkString = @"FastKV";
 static uint32_t FastKVVersion  = 1; // mmkv file format version
 static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + sizeof(version) + sizeof(content_size)
@@ -82,7 +82,6 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + sizeof(version) + si
         return NO;
     }
     
-    
     if (![self mapWithSize:((statInfo.st_size / FastKVPageSize) + 1) * FastKVPageSize]) {
         return NO;
     }
@@ -123,8 +122,10 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + sizeof(version) + si
     NSError *error;
     FKVPairList *kvlist = [FKVPairList parseFromData:data error:&error];
     for (FKVPair *item in kvlist.items) {
-        if (item.key != nil && ![item.objcType isEqualToString:@"NSNull"]) {
+        if (item.key != nil && item.valueType != FKVPairTypeRemoved) {
             _dict[item.key] = item;
+        } else if (item.valueType == FKVPairTypeRemoved) {
+            [_dict removeObjectForKey:item.key];
         }
     }
     [self reallocWithExtraSize:0];
@@ -321,7 +322,10 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + sizeof(version) + si
 
 - (void)setObject:(id)obj forKey:(NSString *)key {
     if (obj == nil) {
-        [self removeObjectForKey:key];
+        FKVPair *kv = [[FKVPair alloc] init];
+        kv.valueType = FKVPairTypeNil;
+        kv.key = key;
+        [self append:kv];
         return;
     }
     
@@ -351,8 +355,8 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + sizeof(version) + si
 
 - (void)removeObjectForKey:(NSString *)key {
     FKVPair *kv = [[FKVPair alloc] init];
+    kv.valueType = FKVPairTypeRemoved;
     kv.key = key;
-    kv.objcType = @"NSNull";
     [self append:kv];
 }
 
@@ -379,7 +383,11 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + sizeof(version) + si
 - (void)append:(FKVPair *)item {
     pthread_mutex_lock(&_mutexLock);
 
-    _dict[item.key] = item;
+    if (item.valueType != FKVPairTypeRemoved) {
+        _dict[item.key] = item;
+    } else {
+        [_dict removeObjectForKey:item.key];
+    }
     
     NSMutableData *data = [NSMutableData data];
     [data appendData:[item representationData]];
@@ -411,7 +419,7 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + sizeof(version) + si
 - (void)reallocWithExtraSize:(size_t)size {
     FKVPairList *kvlist = [[FKVPairList alloc] init];
     for (FKVPair *item in _dict.allValues) {
-        if (![item.objcType isEqualToString:@"NSNull"]) {
+        if (item.valueType != FKVPairTypeRemoved) {
             [kvlist.items addObject:item];
         }
     }
@@ -422,7 +430,13 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + sizeof(version) + si
     size_t newTotalSize = totalSize + size;
     if (newTotalSize >= _mmsize) {
         munmap(_mmptr, _mmsize);
-        [self mapWithSize:((newTotalSize / FastKVPageSize) + 1) * FastKVPageSize];
+        size_t allocationSize = _mmsize;
+        int scale = (newTotalSize < FastKVPageSize * 8) ? 4 : 2;
+        while (allocationSize <= newTotalSize) {
+            allocationSize *= scale;
+        }
+        [self mapWithSize:allocationSize];
+//        [self mapWithSize:((newTotalSize / FastKVPageSize) + 1) * FastKVPageSize];
         [self resetHeaderWithContentSize:0];
     }
     memcpy((char *)_mmptr + FastKVHeaderSize, data.bytes, dataLength);
@@ -432,8 +446,7 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + sizeof(version) + si
 
 #if DEBUG
 + (void)dump {
-//    typeof(kInstances) tmp = kInstances;
-//    NSLog(@"instances: %@", tmp);
+    
 }
 #endif
 @end
