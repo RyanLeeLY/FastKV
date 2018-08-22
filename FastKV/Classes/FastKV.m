@@ -11,13 +11,12 @@
 #import <sys/stat.h>
 #import <pthread/pthread.h>
 
-const char * FastKVSeparatorString = "$FastKV$";
-const NSUInteger FastKVSeparatorStringLength = 8;
+const char * FastKVSeparatorString = "$FastKVSeparatorString$";
 
 static size_t   FastKVPageSize = 8 * 1024; // bytes
 static NSString *const FastKVMarkString = @"FastKV";
 static uint32_t FastKVVersion  = 1; // mmkv file format version
-static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + sizeof(version) + sizeof(content_size)
+static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint32_t) + dataLength: sizeof(uint64_t)
 
 @interface FastKV () {
     int _fd;
@@ -82,7 +81,7 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + sizeof(version) + si
         return NO;
     }
     
-    if (![self mapWithSize:((statInfo.st_size / FastKVPageSize) + 1) * FastKVPageSize]) {
+    if (![self reallocMMSizeWithNeededSize:statInfo.st_size]) {
         return NO;
     }
     
@@ -391,7 +390,7 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + sizeof(version) + si
     
     NSMutableData *data = [NSMutableData data];
     [data appendData:[item representationData]];
-    [data appendBytes:FastKVSeparatorString length:FastKVSeparatorStringLength];
+    [data appendBytes:FastKVSeparatorString length:sizeof(FastKVSeparatorString)];
     
     if (data.length + _cursize >= _mmsize) {
         [self reallocWithExtraSize:data.length];
@@ -430,18 +429,21 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + sizeof(version) + si
     size_t newTotalSize = totalSize + size;
     if (newTotalSize >= _mmsize) {
         munmap(_mmptr, _mmsize);
-        size_t allocationSize = _mmsize;
-        int scale = (newTotalSize < FastKVPageSize * 8) ? 4 : 2;
-        while (allocationSize <= newTotalSize) {
-            allocationSize *= scale;
-        }
-        [self mapWithSize:allocationSize];
-//        [self mapWithSize:((newTotalSize / FastKVPageSize) + 1) * FastKVPageSize];
+        [self reallocMMSizeWithNeededSize:totalSize];
         [self resetHeaderWithContentSize:0];
     }
     memcpy((char *)_mmptr + FastKVHeaderSize, data.bytes, dataLength);
     memcpy((char *)_mmptr + 10, &dataLength, 8);
     _cursize = dataLength + FastKVHeaderSize;
+}
+
+- (BOOL)reallocMMSizeWithNeededSize:(size_t)neededSize {
+    size_t allocationSize = FastKVPageSize;
+    int scale = (neededSize < FastKVPageSize * 8) ? 4 : 2;
+    while (allocationSize <= neededSize) {
+        allocationSize *= scale;
+    }
+    return [self mapWithSize:allocationSize];
 }
 
 #if DEBUG

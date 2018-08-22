@@ -62,7 +62,8 @@
         NSLog(@"%@", integer);
     } else if (sender.tag == 3) {
         [[FastKV defaultFastKV] removeObjectForKey:@"testfkv4800"];
-//        [[FastKV defaultFastKV] reset];
+    } else if (sender.tag == 4) {
+        [[FastKV defaultFastKV] reset];
         
         [self logTimeTakenToRunBlock:^{
             [keyArray enumerateObjectsUsingBlock:^(id  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {

@@ -52,3 +52,7 @@ typedef NS_ENUM(NSUInteger, FKVPairType) {
 @interface FKVPairList : NSObject <FKVCoding>
 @property(copy, nonatomic) NSMutableArray<FKVPair *> *items;
 @end
+
+@interface NSData (FKVPair)
+- (uint16_t)fkv_crc16;
+@end

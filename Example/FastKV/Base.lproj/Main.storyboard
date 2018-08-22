@@ -56,11 +56,26 @@
                                 <state key="normal" title="RESET"/>
                                 <userDefinedRuntimeAttributes>
                                     <userDefinedRuntimeAttribute type="number" keyPath="tag">
-                                        <integer key="value" value="3"/>
+                                        <integer key="value" value="4"/>
                                     </userDefinedRuntimeAttribute>
                                 </userDefinedRuntimeAttributes>
                                 <connections>
                                     <action selector="eventFromButton:" destination="whP-gf-Uak" eventType="touchUpInside" id="1hT-d4-qkn"/>
+                                </connections>
+                            </button>
+                            <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="roundedRect" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="JYn-1q-qp4">
+                                <rect key="frame" x="155" y="270" width="55" height="30"/>
+                                <constraints>
+                                    <constraint firstAttribute="height" constant="30" id="ZqQ-2d-a4s"/>
+                                </constraints>
+                                <state key="normal" title="Remove"/>
+                                <userDefinedRuntimeAttributes>
+                                    <userDefinedRuntimeAttribute type="number" keyPath="tag">
+                                        <integer key="value" value="3"/>
+                                    </userDefinedRuntimeAttribute>
+                                </userDefinedRuntimeAttributes>
+                                <connections>
+                                    <action selector="eventFromButton:" destination="whP-gf-Uak" eventType="touchUpInside" id="eoq-0C-boh"/>
                                 </connections>
                             </button>
                         </subviews>
@@ -69,9 +84,12 @@
                             <constraint firstItem="7wU-bX-5RF" firstAttribute="top" secondItem="vaS-Na-EV1" secondAttribute="bottom" constant="253" id="88y-Jj-ryS"/>
                             <constraint firstItem="xSF-Gg-HDg" firstAttribute="leading" secondItem="TpU-gO-2f1" secondAttribute="leading" constant="164" id="EKh-Ej-NqN"/>
                             <constraint firstAttribute="trailing" relation="greaterThanOrEqual" secondItem="vaS-Na-EV1" secondAttribute="trailing" constant="20" symbolic="YES" id="ITD-gb-ouS"/>
+                            <constraint firstItem="JYn-1q-qp4" firstAttribute="top" secondItem="vaS-Na-EV1" secondAttribute="bottom" constant="8" id="Q5j-W6-hkG"/>
                             <constraint firstItem="vaS-Na-EV1" firstAttribute="leading" secondItem="TpU-gO-2f1" secondAttribute="leading" constant="172" id="ba7-TH-QMH"/>
                             <constraint firstAttribute="trailing" relation="greaterThanOrEqual" secondItem="7wU-bX-5RF" secondAttribute="trailing" constant="20" symbolic="YES" id="cHl-Od-4N1"/>
+                            <constraint firstItem="JYn-1q-qp4" firstAttribute="leading" secondItem="TpU-gO-2f1" secondAttribute="leading" constant="155" id="cc2-45-Y8T"/>
                             <constraint firstItem="7wU-bX-5RF" firstAttribute="leading" secondItem="TpU-gO-2f1" secondAttribute="leading" constant="159" id="mxN-BS-yeC"/>
+                            <constraint firstAttribute="trailing" relation="greaterThanOrEqual" secondItem="JYn-1q-qp4" secondAttribute="trailing" constant="20" symbolic="YES" id="nHf-yG-avD"/>
                             <constraint firstAttribute="trailing" relation="greaterThanOrEqual" secondItem="xSF-Gg-HDg" secondAttribute="trailing" constant="20" symbolic="YES" id="uT2-fl-g4N"/>
                             <constraint firstItem="vaS-Na-EV1" firstAttribute="top" secondItem="xSF-Gg-HDg" secondAttribute="bottom" constant="48" id="vjZ-dz-w4r"/>
                             <constraint firstItem="xSF-Gg-HDg" firstAttribute="top" secondItem="uEw-UM-LJ8" secondAttribute="bottom" constant="134" id="y9X-f4-pCu"/>

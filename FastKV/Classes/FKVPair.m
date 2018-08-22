@@ -13,6 +13,15 @@
     if (data.length == 0) {
         return nil;
     }
+    
+    // CRC check
+    uint16_t crc = [[data subdataWithRange:NSMakeRange(0, data.length-2)] fkv_crc16];
+    uint16_t crcInData;
+    [data getBytes:&crcInData range:NSMakeRange(data.length-2, 2)];
+    if (crc != crcInData) {
+        return nil;
+    }
+    
     FKVPair *pair = [[FKVPair alloc] init];
     
     NSUInteger currentIndex = 0;
@@ -187,6 +196,16 @@
         }
     }
     
+    uint16_t crc = [dataM fkv_crc16];
+    [dataM appendBytes:&crc length:2];
+    
+    if ([self.key isEqualToString:@"testfkv3961"]) {
+        
+    }
+    
+    if ([self.key isEqualToString:@"testfkv1334"]) {
+        
+    }
     return [dataM copy];
 }
 @end
@@ -194,7 +213,7 @@
 @implementation FKVPairList
 + (FKVPairList *)parseFromData:(NSData *)data error:(NSError *__autoreleasing *)error {
     NSUInteger len = data.length;
-    NSData *delimiterData = [NSData dataWithBytes:FastKVSeparatorString length:FastKVSeparatorStringLength];
+    NSData *delimiterData = [NSData dataWithBytes:FastKVSeparatorString length:sizeof(FastKVSeparatorString)];
     
     FKVPairList *kvList = [[FKVPairList alloc] init];
     
@@ -226,9 +245,36 @@
 - (NSData *)representationData {
     NSMutableData *data = [NSMutableData data];
     [self.items enumerateObjectsUsingBlock:^(FKVPair * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-        [data appendBytes:FastKVSeparatorString length:FastKVSeparatorStringLength];
         [data appendData:[obj representationData]];
+        [data appendBytes:FastKVSeparatorString length:sizeof(FastKVSeparatorString)];
     }];
     return data;
+}
+@end
+
+@implementation NSData (FKVPair)
+
+- (uint16_t)fkv_crc16 {
+    const uint8_t *byte = (const uint8_t *)self.bytes;
+    uint16_t length = (uint16_t)self.length;
+    return fkv_gen_crc16(byte, length);
+}
+
+#define FKVPairCRCPLOY 0X1021
+uint16_t fkv_gen_crc16(const uint8_t *data, uint16_t size) {
+    uint16_t crc = 0;
+    uint8_t i;
+    for (; size > 0; size--) {
+        crc = crc ^ (*data++ <<8);
+        for (i = 0; i < 8; i++) {
+            if (crc & 0X8000) {
+                crc = (crc << 1) ^ FKVPairCRCPLOY;
+            }else {
+                crc <<= 1;
+            }
+        }
+        crc &= 0XFFFF;
+    }
+    return crc;
 }
 @end

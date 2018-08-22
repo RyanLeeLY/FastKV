@@ -8,7 +8,6 @@
 #import <Foundation/Foundation.h>
 
 extern const char * FastKVSeparatorString;
-extern const NSUInteger FastKVSeparatorStringLength;
 
 @interface FastKV : NSObject
 + (instancetype)defaultFastKV;
