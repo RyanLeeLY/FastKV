@@ -106,7 +106,7 @@ update耗时：**80ms** （NSUserDefults Sync：**3521ms**）
 
 get耗时：**10ms** （NSUserDefults Sync：**48ms**）
 
-测试下来mmap
+测试下来mmap性能确实比`NSUserDefults Sync`要好不少，也和微信那篇文章中对MMKV的性能测试结果基本一致。总的来说，如果对实时性要求不高的项目，建议还是使用官方的`NSUserDefults `。
 
 ## 轮子
 
