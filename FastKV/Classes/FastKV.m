@@ -13,7 +13,7 @@
 
 const char * FastKVSeparatorString = "$FastKVSeparatorString$";
 
-static size_t   FastKVPageSize = 8 * 1024; // bytes
+static size_t   FastKVMinMMSize = 1024 * 1024; // bytes
 static NSString *const FastKVMarkString = @"FastKV";
 static uint32_t FastKVVersion  = 1; // mmkv file format version
 static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint32_t) + dataLength: sizeof(uint64_t)
@@ -359,7 +359,7 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
 
     [_dict removeAllObjects];
     munmap(_mmptr, _mmsize);
-    [self mapWithSize:FastKVPageSize];
+    [self mapWithSize:FastKVMinMMSize];
     [self resetHeaderWithContentSize:0];
     
     pthread_mutex_unlock(&_mutexLock);
@@ -376,8 +376,19 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
 
 - (void)append:(FKVPair *)item {
     pthread_mutex_lock(&_mutexLock);
-
+    BOOL isUpdated = NO;
+    
+    if (_dict[item.key]) {
+        isUpdated = YES;
+        FKVPair *aItem = _dict[item.key];
+        if ([aItem isEqual:item]) {
+            pthread_mutex_unlock(&_mutexLock);
+            return;
+        }
+    }
+    
     if (item.valueType != FKVPairTypeRemoved) {
+        
         _dict[item.key] = item;
     } else {
         [_dict removeObjectForKey:item.key];
@@ -388,7 +399,7 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
     [data appendBytes:FastKVSeparatorString length:sizeof(FastKVSeparatorString)];
 
     if (data.length + _cursize >= _mmsize) {
-        [self reallocWithExtraSize:data.length];
+        [self reallocWithExtraSize:data.length scale:isUpdated?2:1];
     } else {
         memcpy((char *)_mmptr + _cursize, data.bytes, data.length);
         _cursize += data.length;
@@ -410,7 +421,7 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
     return YES;
 }
 
-- (void)reallocWithExtraSize:(size_t)size {
+- (void)reallocWithExtraSize:(size_t)size scale:(CGFloat)scale {
     FKVPairList *kvlist = [[FKVPairList alloc] init];
     for (FKVPair *item in _dict.allValues) {
         if (item.valueType != FKVPairTypeRemoved) {
@@ -421,8 +432,8 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
     NSUInteger dataLength = data.length;
     
     size_t totalSize = dataLength + FastKVHeaderSize;
-    size_t neededSize = totalSize + size;
-    if (neededSize * 1.5 > _mmsize) {
+    size_t neededSize = (totalSize + size) * (size_t)scale;
+    if (neededSize > _mmsize) {
         munmap(_mmptr, _mmsize);
         [self reallocMMSizeWithNeededSize:neededSize];
         [self resetHeaderWithContentSize:0];
@@ -432,9 +443,13 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
     _cursize = dataLength + FastKVHeaderSize;
 }
 
+- (void)reallocWithExtraSize:(size_t)size {
+    [self reallocWithExtraSize:size scale:1];
+}
+
 - (BOOL)reallocMMSizeWithNeededSize:(size_t)neededSize {
-    size_t allocationSize = 8;
-    while (allocationSize < neededSize * 2) {
+    size_t allocationSize = FastKVMinMMSize;
+    while (allocationSize < neededSize) {
         allocationSize *= 2;
     }
     return [self mapWithSize:allocationSize];

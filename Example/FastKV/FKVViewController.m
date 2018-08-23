@@ -50,15 +50,16 @@ uint64_t dispatch_benchmark(size_t count, void (^block)(void));
 
 - (IBAction)eventFromButton:(UIButton *)sender {
     NSMutableArray *keyArray = [NSMutableArray array];
-    for (int i=0; i<100; i++) {
-        NSString *key = [NSString stringWithFormat:@"testfkv%@", @(i)];
-        [keyArray addObject:key];
+    NSMutableArray *valueArray = [NSMutableArray array];
+    for (int i=0; i<10000; i++) {
+        [keyArray addObject:[NSString stringWithFormat:@"testfkv%@", @(i)]];
+        [valueArray addObject:[NSString stringWithFormat:@"value%ud", arc4random()]];
     }
     if (sender.tag == 1) {
-        
+        __block int i = 0;
         uint64_t time = dispatch_benchmark(10000, ^{
 //            [[FastKV defaultFastKV] setInteger:1 forKey:@"testfkv4800"];
-            [[FastKV defaultFastKV] setObject:@"testfkv4800" forKey:@"testfkv4800"];
+            [[FastKV defaultFastKV] setObject:valueArray[i] forKey:keyArray[i++]];
         });
         NSLog(@"FastKV %@ms", @(time * 10000 / 1000000));
         
@@ -69,9 +70,10 @@ uint64_t dispatch_benchmark(size_t count, void (^block)(void));
     } else if (sender.tag == 3) {
         [[FastKV defaultFastKV] removeObjectForKey:@"testfkv4800"];
     } else if (sender.tag == 4) {
-        
+        __block int i = 0;
         uint64_t time = dispatch_benchmark(10000, ^{
-            [[NSUserDefaults standardUserDefaults] setObject:@"testfkv4800" forKey:@"testfkv4800"];
+            [[NSUserDefaults standardUserDefaults] setObject:valueArray[i] forKey:keyArray[i++]];
+            [[NSUserDefaults standardUserDefaults] synchronize];
 //            [[NSUserDefaults standardUserDefaults] setInteger:1 forKey:@"testfkv4800"];
         });
         NSLog(@"NSUserDefaults %@ms", @(time * 10000 / 1000000));

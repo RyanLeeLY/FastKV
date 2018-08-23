@@ -237,6 +237,53 @@
     
     return [dataM copy];
 }
+
+- (BOOL)isEqual:(FKVPair *)object {
+    if (![object isKindOfClass:[FKVPair class]]) {
+        return NO;
+    }
+    BOOL result = YES;
+    switch (self.valueType) {
+        case FKVPairTypeRemoved:
+        case FKVPairTypeNil: {
+            return YES;
+            break;
+        }
+        case FKVPairTypeBOOL: {
+            result = result && (self.boolVal == object.boolVal);
+            break;
+        }
+        case FKVPairTypeInt32: {
+            result = result && (self.int32Val == object.int32Val);
+            break;
+        }
+        case FKVPairTypeInt64: {
+            result = result && (self.int64Val == object.int64Val);
+            break;
+        }
+        case FKVPairTypeFloat: {
+            result = result && (self.floatVal == object.floatVal);
+            break;
+        }
+        case FKVPairTypeDouble: {
+            result = result && (self.doubleVal == object.doubleVal);
+            break;
+        }
+        case FKVPairTypeString: {
+            result = result && [self.stringVal isEqualToString:object.stringVal];
+            break;
+        }
+        case FKVPairTypeData: {
+            result = result && (self.binaryVal == object.binaryVal);
+            break;
+        }
+    }
+    if (!result) {
+        return NO;
+    }
+    result = result && (self.valueType == object.valueType);
+    return result;
+}
 @end
 
 @implementation FKVPairList
