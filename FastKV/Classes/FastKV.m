@@ -388,7 +388,6 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
     }
     
     if (item.valueType != FKVPairTypeRemoved) {
-        
         _dict[item.key] = item;
     } else {
         [_dict removeObjectForKey:item.key];

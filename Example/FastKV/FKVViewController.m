@@ -30,7 +30,7 @@
 
 - (void)test {
     [[FastKV defaultFastKV] reset];
-    [NSUserDefaults resetStandardUserDefaults];
+//    [self resetDefaults];
 
     FKVPair *fkp = [[FKVPair alloc] init];
     fkp.valueType = FKVPairTypeData;
@@ -53,31 +53,46 @@ uint64_t dispatch_benchmark(size_t count, void (^block)(void));
     NSMutableArray *valueArray = [NSMutableArray array];
     for (int i=0; i<10000; i++) {
         [keyArray addObject:[NSString stringWithFormat:@"testfkv%@", @(i)]];
-        [valueArray addObject:[NSString stringWithFormat:@"value%ud", arc4random()]];
+//        [valueArray addObject:[NSString stringWithFormat:@"value%ud", arc4random()]];
+        [valueArray addObject:@(arc4random())];
     }
     if (sender.tag == 1) {
         __block int i = 0;
         uint64_t time = dispatch_benchmark(10000, ^{
-//            [[FastKV defaultFastKV] setInteger:1 forKey:@"testfkv4800"];
-            [[FastKV defaultFastKV] setObject:valueArray[i] forKey:keyArray[i++]];
+            [[FastKV defaultFastKV] setInteger:[valueArray[i] integerValue] forKey:keyArray[i++]];
+//            [[FastKV defaultFastKV] setObject:valueArray[i] forKey:keyArray[i++]];
         });
         NSLog(@"FastKV %@ms", @(time * 10000 / 1000000));
         
     } else if (sender.tag == 2) {
-        id integer = [[FastKV defaultFastKV] objectOfClass:NSString.class forKey:@"testfkv4800"];
-        
-        NSLog(@"%@", integer);
+        __block int i = 0;
+        uint64_t time = dispatch_benchmark(10000, ^{
+//            [[FastKV defaultFastKV] integerForKey:keyArray[i++]];
+            
+            [[NSUserDefaults standardUserDefaults] integerForKey:keyArray[i++]];
+        });
+        NSLog(@"Get FastKV %@ms", @(time * 10000 / 1000000));
     } else if (sender.tag == 3) {
         [[FastKV defaultFastKV] removeObjectForKey:@"testfkv4800"];
     } else if (sender.tag == 4) {
         __block int i = 0;
         uint64_t time = dispatch_benchmark(10000, ^{
-            [[NSUserDefaults standardUserDefaults] setObject:valueArray[i] forKey:keyArray[i++]];
+            [[NSUserDefaults standardUserDefaults] setInteger:[valueArray[i] integerValue] forKey:keyArray[i++]];
+//            [[NSUserDefaults standardUserDefaults] setObject:valueArray[i] forKey:keyArray[i++]];
             [[NSUserDefaults standardUserDefaults] synchronize];
-//            [[NSUserDefaults standardUserDefaults] setInteger:1 forKey:@"testfkv4800"];
         });
         NSLog(@"NSUserDefaults %@ms", @(time * 10000 / 1000000));
     }
+}
+
+
+- (void)resetDefaults {
+    NSUserDefaults * defs = [NSUserDefaults standardUserDefaults];
+    NSDictionary * dict = [defs dictionaryRepresentation];
+    for (id key in dict) {
+        [defs removeObjectForKey:key];
+    }
+    [defs synchronize];
 }
 
 - (void)logTimeTakenToRunBlock:(void(^)(void))block withPrefix:(NSString *)prefixString {
