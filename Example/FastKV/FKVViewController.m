@@ -46,6 +46,8 @@
     NSLog(@"%@", pair);
 }
 
+uint64_t dispatch_benchmark(size_t count, void (^block)(void));
+
 - (IBAction)eventFromButton:(UIButton *)sender {
     NSMutableArray *keyArray = [NSMutableArray array];
     for (int i=0; i<100; i++) {
@@ -53,32 +55,26 @@
         [keyArray addObject:key];
     }
     if (sender.tag == 1) {
-        [self logTimeTakenToRunBlock:^{
-            NSString *obj = @"test";
-//            [keyArray enumerateObjectsUsingBlock:^(id  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-//                [[FastKV defaultFastKV] setObject:obj forKey:obj];
-//                [[FastKV defaultFastKV] setBool:YES forKey:obj];
-                [[FastKV defaultFastKV] setInteger:1 forKey:obj];
-//            }];
-        } withPrefix:@"FKV"];
+        
+        uint64_t time = dispatch_benchmark(10000, ^{
+//            [[FastKV defaultFastKV] setInteger:1 forKey:@"testfkv4800"];
+            [[FastKV defaultFastKV] setObject:@"testfkv4800" forKey:@"testfkv4800"];
+        });
+        NSLog(@"FastKV %@ms", @(time * 10000 / 1000000));
         
     } else if (sender.tag == 2) {
-        id integer = [[FastKV defaultFastKV] objectOfClass:NSNumber.class forKey:@"testfkv4800"];
+        id integer = [[FastKV defaultFastKV] objectOfClass:NSString.class forKey:@"testfkv4800"];
         
         NSLog(@"%@", integer);
     } else if (sender.tag == 3) {
         [[FastKV defaultFastKV] removeObjectForKey:@"testfkv4800"];
     } else if (sender.tag == 4) {
         
-        [self logTimeTakenToRunBlock:^{
-            NSString *obj = @"test";
-//            [keyArray enumerateObjectsUsingBlock:^(id  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
-                [[NSUserDefaults standardUserDefaults] setInteger:1 forKey:obj];
-//                [[NSUserDefaults standardUserDefaults] setObject:obj forKey:obj];
-//                [[NSUserDefaults standardUserDefaults] synchronize];
-//                [[NSUserDefaults standardUserDefaults] setDouble:1.0 forKey:obj];
-//            }];
-        } withPrefix:@"UserDefaults"];
+        uint64_t time = dispatch_benchmark(10000, ^{
+            [[NSUserDefaults standardUserDefaults] setObject:@"testfkv4800" forKey:@"testfkv4800"];
+//            [[NSUserDefaults standardUserDefaults] setInteger:1 forKey:@"testfkv4800"];
+        });
+        NSLog(@"NSUserDefaults %@ms", @(time * 10000 / 1000000));
     }
 }
 

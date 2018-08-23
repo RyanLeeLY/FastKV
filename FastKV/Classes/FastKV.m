@@ -58,17 +58,19 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
             return nil;
         }
         
+        pthread_mutex_init(&_mutexLock, NULL);
+        
         if(![self open:path]) {
             return nil;
         }
         
-        pthread_mutex_init(&_mutexLock, NULL);
 
     }
     return self;
 }
 
 - (BOOL)open:(NSString *)file {
+    pthread_mutex_lock(&_mutexLock);
     _fd = open([file fileSystemRepresentation], O_RDWR | O_CREAT, 0666);
     if (_fd == 0) {
         NSCAssert(NO, @"Can not open file: %@", file);
@@ -128,6 +130,7 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
         }
     }
     [self reallocWithExtraSize:0];
+    pthread_mutex_unlock(&_mutexLock);
     return YES;
 }
 
