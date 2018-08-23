@@ -14,7 +14,7 @@
  //Header Segment//
  valueType[NSUInteger] | version[uint32_t] | objcTypeLength[NSUInteger] | keyLength:[NSUInteger] | dataLength[NSUInteger]
  
- //Content Segment//
+ //Data Segment//
  objcType[Byte] | key[Byte] | data[Byte]
  
  //Check Code//
