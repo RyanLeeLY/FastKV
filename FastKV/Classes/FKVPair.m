@@ -22,6 +22,20 @@
  */
 
 @implementation FKVPair
+- (instancetype)initWithValueType:(FKVPairType)valueType
+                         objcType:(NSString *)objcType
+                              key:(NSString *)key
+                          version:(uint32_t)version {
+    self = [self init];
+    if (self) {
+        _valueType = valueType;
+        _objcType = objcType;
+        _key = key;
+        _fkv_version = version;
+    }
+    return self;
+}
+
 + (id)parseFromData:(NSData *)data error:(NSError *__autoreleasing *)error {
     if (data.length == 0) {
         return nil;

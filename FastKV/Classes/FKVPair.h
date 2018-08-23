@@ -48,6 +48,11 @@ typedef NS_ENUM(NSUInteger, FKVPairType) {
 @property(copy, nonatomic) NSData *binaryVal;
 
 @property(assign, nonatomic) uint32_t fkv_version;
+
+- (instancetype)initWithValueType:(FKVPairType)valueType
+                         objcType:(NSString *)objcType
+                              key:(NSString *)key
+                          version:(uint32_t)version;
 @end
 
 @interface FKVPairList : NSObject <FKVCoding>

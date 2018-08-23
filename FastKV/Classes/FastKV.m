@@ -279,20 +279,13 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
 
 #pragma mark - set: primitive types
 - (void)setBool:(BOOL)val forKey:(NSString *)key {
-    FKVPair *kv = [[FKVPair alloc] init];
-    kv.fkv_version = FastKVVersion;
-    kv.key = key;
+    FKVPair *kv = [[FKVPair alloc] initWithValueType:FKVPairTypeBOOL objcType:@"NSNumber" key:key version:FastKVVersion];
     kv.boolVal = val;
-    kv.objcType = @"NSNumber";
-    kv.valueType = FKVPairTypeBOOL;
     [self append:kv];
 }
 
 - (void)setInteger:(NSInteger)intval forKey:(NSString *)key {
-    FKVPair *kv = [[FKVPair alloc] init];
-    kv.fkv_version = FastKVVersion;
-    kv.key = key;
-    kv.objcType = @"NSNumber";
+    FKVPair *kv = [[FKVPair alloc] initWithValueType:FKVPairTypeNil objcType:@"NSNumber" key:key version:FastKVVersion];
     if (intval > INT_MAX) {
         kv.int64Val = (int64_t)intval;
         kv.valueType = FKVPairTypeInt64;
@@ -304,22 +297,14 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
 }
 
 - (void)setFloat:(float)val forKey:(NSString *)key {
-    FKVPair *kv = [[FKVPair alloc] init];
-    kv.fkv_version = FastKVVersion;
-    kv.key = key;
+    FKVPair *kv = [[FKVPair alloc] initWithValueType:FKVPairTypeFloat objcType:@"NSNumber" key:key version:FastKVVersion];
     kv.floatVal = val;
-    kv.objcType = @"NSNumber";
-    kv.valueType = FKVPairTypeFloat;
     [self append:kv];
 }
 
 - (void)setDouble:(double)val forKey:(NSString *)key {
-    FKVPair *kv = [[FKVPair alloc] init];
-    kv.fkv_version = FastKVVersion;
-    kv.key = key;
+    FKVPair *kv = [[FKVPair alloc] initWithValueType:FKVPairTypeDouble objcType:@"NSNumber" key:key version:FastKVVersion];
     kv.doubleVal = val;
-    kv.objcType = @"NSNumber";
-    kv.valueType = FKVPairTypeDouble;
     [self append:kv];
 }
 
@@ -398,13 +383,13 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
     NSMutableData *data = [NSMutableData data];
     [data appendData:[item representationData]];
     [data appendBytes:FastKVSeparatorString length:sizeof(FastKVSeparatorString)];
-    
+
     if (data.length + _cursize >= _mmsize) {
         [self reallocWithExtraSize:data.length];
     } else {
         memcpy((char *)_mmptr + _cursize, data.bytes, data.length);
         _cursize += data.length;
-        
+
         uint64_t dataLength = _cursize - FastKVHeaderSize;
         memcpy((char *)_mmptr + sizeof(uint32_t) + [FastKVMarkString lengthOfBytesUsingEncoding:NSUTF8StringEncoding], &dataLength, 8);
     }
