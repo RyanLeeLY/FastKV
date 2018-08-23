@@ -78,7 +78,7 @@ CRC code：倒数16位之前数据的CRC-16循环冗余检测码，用于后期�
 
 如果当前分配的`mmap size`仅仅只比当前正在使用的size多出极少极少一点，以至于接下来任何的append操作都会触发排重，但是由于每次都是对key进行更新操作，如果当前mmap的数据已经是最小集合了（没有任何重复key的数据），于是在排重完成后`mmap size`又刚好够用，不需要重新分配`mmap size`。这时候`mmap size`又是仅仅只比当前正在使用的size多出极少极少一点，然后任何的append又会走一遍上述逻辑。
 
-为了解决这个问题，笔者在append操作的时候附加了一个逻辑：如果当前是对key进行更新操作，那么重新分配`mmap size`的需求大小将会扩大1倍。也就是说如果对key进行更新操作后出发排重，这时`mmap size`的将会按当前需求2倍的大小尝试进行重新分配，以空间来换取时间性能。
+为了解决这个问题，笔者在append操作的时候附加了一个逻辑：如果当前是对key进行更新操作，那么重新分配`mmap size`的需求大小将会扩大1倍。也就是说如果对key进行更新操作后触发排重，这时`mmap size`的将会按当前需求2倍的大小尝试进行重新分配，以空间来换取时间性能。
 
 ``` objective-c
 if (data.length + _cursize >= _mmsize) {
@@ -104,7 +104,7 @@ add耗时：**70ms** （NSUserDefults Sync：**3469ms**）
 
 update耗时：**80ms** （NSUserDefults Sync：**3521ms**）
 
-get耗时：**10ms** （NSUserDefults Sync：**48ms**）
+get耗时：**10ms** （NSUserDefults：**48ms**）
 
 测试下来mmap性能确实比`NSUserDefults Sync`要好不少，也和微信那篇文章中对MMKV的性能测试结果基本一致。总的来说，如果对实时性要求不高的项目，建议还是使用官方的`NSUserDefults `。
 
