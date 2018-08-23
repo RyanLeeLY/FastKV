@@ -9,7 +9,7 @@
 Pod::Spec.new do |s|
   s.name             = 'FastKV'
   s.version          = '0.1.0'
-  s.summary          = 'A short description of FastKV.'
+  s.summary          = 'FastKV is a real-time and high-performance key-value components.'
 
 # This description is used to generate tags and improve search results.
 #   * Think: What does it do? Why did you write it? What is the focus?
@@ -18,15 +18,15 @@ Pod::Spec.new do |s|
 #   * Finally, don't worry about the indent, CocoaPods strips it!
 
   s.description      = <<-DESC
-TODO: Add long description of the pod here.
+  FastKV is a real-time and high-performance key-value components based on mmap.
                        DESC
 
-  s.homepage         = 'https://github.com/yao.li/FastKV'
+  s.homepage         = 'https://github.com/RyanLeeLY/FastKV'
   # s.screenshots     = 'www.example.com/screenshots_1', 'www.example.com/screenshots_2'
   s.license          = { :type => 'MIT', :file => 'LICENSE' }
-  s.author           = { 'yao.li' => 'yao.li@cootek.cn' }
-  s.source           = { :git => 'https://github.com/yao.li/FastKV.git', :tag => s.version.to_s }
-  # s.social_media_url = 'https://twitter.com/<TWITTER_USERNAME>'
+  s.author           = { 'yao.li' => 'liyaoxjtu2013@gmail.com' }
+  s.source           = { :git => 'https://github.com/RyanLeeLY/FastKV.git', :tag => s.version.to_s }
+
 
   s.ios.deployment_target = '8.0'
 
