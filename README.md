@@ -5,8 +5,7 @@
 [![Gmail](https://img.shields.io/badge/Gmail-@liyaoxjtu2013-red.svg?style=flat)](mail://liyaoxjtu2013@gmail.com)
 [![Twitter](https://img.shields.io/twitter/url/http/shields.io.svg?style=social)](https://twitter.com/liyaoryan)
 
-## 中文介绍
-[MIT](https://github.com/RyanLeeLY/FastKV/blob/master/iOS的高性能、高实时性key-value持久化组件.md)
+[中文介绍](https://github.com/RyanLeeLY/FastKV/blob/master/iOS的高性能、高实时性key-value持久化组件.md)
 
 ## Usage
 ```
