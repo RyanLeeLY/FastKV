@@ -27,6 +27,14 @@ it, simply add the following line to your Podfile:
 pod 'FastKV'
 ```
 
+## Benchmark
+iPhone 8 64G, iOS 11.4
+
+**Time taken of 10,000 write operations, unit: ms**
+
+![Benchmark](https://github.com/RyanLeeLY/FastKV/raw/master/benchmark.jpeg)
+
+
 ## Author
 
 yao.li, liyaoxjtu2013@gmail.com
