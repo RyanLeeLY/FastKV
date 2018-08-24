@@ -453,10 +453,4 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
     }
     return [self mapWithSize:allocationSize];
 }
-
-#if DEBUG
-+ (void)dump {
-    
-}
-#endif
 @end

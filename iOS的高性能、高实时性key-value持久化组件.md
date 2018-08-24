@@ -1,8 +1,9 @@
-# iOS的高性能、高实时性key-value持久化组件
+> 今年上半年时候看到微信开发团队的这么一篇文章[MMKV--基于 mmap 的 iOS 高性能通用 key-value 组件](https://mp.weixin.qq.com/s/cZQ3FQxRJBx4px1woBaasg)，文中提到了用mmap实现一个高性能KV组件，虽然并没有展示太多的具体代码，但是基本思路讲的还是很清楚的。<br>文章最后提到了开源计划，等了快半年还没看到这个组件源码，于是决定自己试着写一个。
 
-今年上半年时候看到微信开发团队的这么一篇文章[MMKV--基于 mmap 的 iOS 高性能通用 key-value 组件](https://mp.weixin.qq.com/s/cZQ3FQxRJBx4px1woBaasg)，文中提到了用mmap实现一个高性能KV组件，虽然并没有展示太多的具体代码，但是基本思路讲的还是很清楚的。
+## 轮子
+按照惯例先上轮子，可以先给个小星星哦~
 
-上面那篇文章最后提到了开源计划，等了快半年还没看到这个组件源码，于是决定自己试着写一个。
+**FastKV** [github](https://github.com/RyanLeeLY/FastKV)
 
 ## 关于NSUserDefaults
 
@@ -108,6 +109,12 @@ get耗时：**10ms** （NSUserDefults：**48ms**）
 
 测试下来mmap性能确实比`NSUserDefults Sync`要好不少，也和微信那篇文章中对MMKV的性能测试结果基本一致。总的来说，如果对实时性要求不高的项目，建议还是使用官方的`NSUserDefults `。
 
-## 轮子
+## 其他开源作品
+**TinyPart —模块化框架**
+[github](https://github.com/RyanLeeLY/TinyPart)
+[掘金](https://juejin.im/post/5ad473dff265da2391489711)
 
-### FastKV [https://github.com/RyanLeeLY/FastKV](https://github.com/RyanLeeLY/FastKV)
+**Coolog —可扩展的log框架** [github](https://github.com/RyanLeeLY/Coolog)
+[掘金](https://juejin.im/post/5b04168f6fb9a07a9e4d90b8)
+
+**WhiteElephantKiller —无用代码扫描工具** [github](https://github.com/RyanLeeLY/WhiteElephantKiller)
