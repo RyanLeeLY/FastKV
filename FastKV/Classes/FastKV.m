@@ -11,7 +11,7 @@
 #import <sys/stat.h>
 #import <pthread/pthread.h>
 
-const char * FastKVSeparatorString = "$FastKVSeparatorString$";
+const char * FastKVSeperatorString = "$FastKVSeperatorString$";
 
 NSString * const FastKVErrorDomain = @"com.fastkv.error";
 
@@ -19,6 +19,8 @@ static size_t   FastKVMinMMSize = 1024 * 1024; // bytes
 static NSString *const FastKVMarkString = @"FastKV";
 static uint32_t FastKVVersion  = 1; // mmkv file format version
 static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint32_t) + dataLength: sizeof(uint64_t)
+
+static NSString * const FastKVObjcClassNameNSNumber = @"NSNumber";
 
 @interface FastKV () {
     int _fd;
@@ -49,6 +51,9 @@ static FastKV *defaultInstacnce;
 
 - (instancetype)init {
     [NSException raise:@"FastKVException" format:@"Can initialize FastKV via -init"];
+    if ([self initWithFile:nil]) {
+        return nil;
+    }
     return nil;
 }
 
@@ -249,13 +254,13 @@ static FastKV *defaultInstacnce;
 
 #pragma mark - set: primitive types
 - (void)setBool:(BOOL)val forKey:(NSString *)key {
-    FKVPair *kv = [[FKVPair alloc] initWithValueType:FKVPairTypeBOOL objcType:@"NSNumber" key:key version:FastKVVersion];
+    FKVPair *kv = [[FKVPair alloc] initWithValueType:FKVPairTypeBOOL objcType:FastKVObjcClassNameNSNumber key:key version:FastKVVersion];
     kv.boolVal = val;
     [self append:kv];
 }
 
 - (void)setInteger:(NSInteger)intval forKey:(NSString *)key {
-    FKVPair *kv = [[FKVPair alloc] initWithValueType:FKVPairTypeNil objcType:@"NSNumber" key:key version:FastKVVersion];
+    FKVPair *kv = [[FKVPair alloc] initWithValueType:FKVPairTypeNil objcType:FastKVObjcClassNameNSNumber key:key version:FastKVVersion];
     if (intval > INT_MAX) {
         kv.int64Val = (int64_t)intval;
         kv.valueType = FKVPairTypeInt64;
@@ -267,13 +272,13 @@ static FastKV *defaultInstacnce;
 }
 
 - (void)setFloat:(float)val forKey:(NSString *)key {
-    FKVPair *kv = [[FKVPair alloc] initWithValueType:FKVPairTypeFloat objcType:@"NSNumber" key:key version:FastKVVersion];
+    FKVPair *kv = [[FKVPair alloc] initWithValueType:FKVPairTypeFloat objcType:FastKVObjcClassNameNSNumber key:key version:FastKVVersion];
     kv.floatVal = val;
     [self append:kv];
 }
 
 - (void)setDouble:(double)val forKey:(NSString *)key {
-    FKVPair *kv = [[FKVPair alloc] initWithValueType:FKVPairTypeDouble objcType:@"NSNumber" key:key version:FastKVVersion];
+    FKVPair *kv = [[FKVPair alloc] initWithValueType:FKVPairTypeDouble objcType:FastKVObjcClassNameNSNumber key:key version:FastKVVersion];
     kv.doubleVal = val;
     [self append:kv];
 }
@@ -389,7 +394,7 @@ static FastKV *defaultInstacnce;
     
     NSMutableData *data = [NSMutableData data];
     [data appendData:[item representationData]];
-    [data appendBytes:FastKVSeparatorString length:sizeof(FastKVSeparatorString)];
+    [data appendBytes:FastKVSeperatorString length:strlen(FastKVSeperatorString)];
 
     if (data.length + _cursize >= _mmsize) {
         [self reallocWithExtraSize:data.length updated:isUpdated];

@@ -289,7 +289,7 @@
 @implementation FKVPairList
 + (FKVPairList *)parseFromData:(NSData *)data error:(NSError *__autoreleasing *)error {
     NSUInteger len = data.length;
-    NSData *delimiterData = [NSData dataWithBytes:FastKVSeparatorString length:sizeof(FastKVSeparatorString)];
+    NSData *delimiterData = [NSData dataWithBytes:FastKVSeperatorString length:strlen(FastKVSeperatorString)];
     
     FKVPairList *kvList = [[FKVPairList alloc] init];
     
@@ -322,7 +322,7 @@
     NSMutableData *data = [NSMutableData data];
     [self.items enumerateObjectsUsingBlock:^(FKVPair * _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
         [data appendData:[obj representationData]];
-        [data appendBytes:FastKVSeparatorString length:sizeof(FastKVSeparatorString)];
+        [data appendBytes:FastKVSeperatorString length:strlen(FastKVSeperatorString)];
     }];
     return data;
 }

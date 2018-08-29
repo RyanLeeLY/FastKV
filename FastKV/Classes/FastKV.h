@@ -7,7 +7,7 @@
 
 #import <Foundation/Foundation.h>
 
-extern const char * FastKVSeparatorString;
+extern const char * FastKVSeperatorString;
 
 extern NSString * const FastKVErrorDomain;
 
@@ -29,7 +29,7 @@ typedef NS_ENUM(NSUInteger, FastKVError) {
 
 + (instancetype)defaultFastKV;
 
-- (instancetype)initWithFile:(NSString *)path;
+- (instancetype)initWithFile:(NSString *)path NS_DESIGNATED_INITIALIZER;
 
 - (BOOL)boolForKey:(NSString *)key;
 - (NSInteger)integerForKey:(NSString *)key;
