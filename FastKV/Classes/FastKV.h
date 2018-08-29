@@ -9,7 +9,24 @@
 
 extern const char * FastKVSeparatorString;
 
+extern NSString * const FastKVErrorDomain;
+
+typedef NS_ENUM(NSUInteger, FastKVError) {
+    FastKVErrorOpenFailed = 4001,
+    FastKVErrorReadFileFailed = 4002,
+    FastKVErrorFileFormatError = 4003,
+    FastKVErrorFileCorrupted = 4004,
+};
+
+@class FastKV;
+
+@protocol FastKVDelegate <NSObject>
+- (void)fastkv:(FastKV *)fastkv fileOpenFailed:(NSError *)error;
+@end
+
 @interface FastKV : NSObject
+@property (weak, nonatomic) id<FastKVDelegate> delegate;
+
 + (instancetype)defaultFastKV;
 
 - (instancetype)initWithFile:(NSString *)path;

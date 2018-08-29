@@ -13,6 +13,8 @@
 
 const char * FastKVSeparatorString = "$FastKVSeparatorString$";
 
+NSString * const FastKVErrorDomain = @"com.fastkv.error";
+
 static size_t   FastKVMinMMSize = 1024 * 1024; // bytes
 static NSString *const FastKVMarkString = @"FastKV";
 static uint32_t FastKVVersion  = 1; // mmkv file format version
@@ -73,17 +75,26 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
     pthread_mutex_lock(&_mutexLock);
     _fd = open([file fileSystemRepresentation], O_RDWR | O_CREAT, 0666);
     if (_fd == 0) {
-        NSCAssert(NO, @"Can not open file: %@", file);
+        pthread_mutex_unlock(&_mutexLock);
+        if ([self.delegate respondsToSelector:@selector(fastkv:fileOpenFailed:)]) {
+            [self.delegate fastkv:self fileOpenFailed:[NSError errorWithDomain:FastKVErrorDomain code:FastKVErrorOpenFailed userInfo:nil]];
+        }
+        NSCAssert(NO, @"[FastKV] Failed to open file: %@", file);
         return NO;
     }
     
     struct stat statInfo;
-    if(fstat( _fd, &statInfo ) != 0) {
-        NSCAssert(NO, @"Can not read file: %@", file);
+    if(fstat(_fd, &statInfo) != 0) {
+        pthread_mutex_unlock(&_mutexLock);
+        if ([self.delegate respondsToSelector:@selector(fastkv:fileOpenFailed:)]) {
+            [self.delegate fastkv:self fileOpenFailed:[NSError errorWithDomain:FastKVErrorDomain code:FastKVErrorReadFileFailed userInfo:nil]];
+        }
+        NSCAssert(NO, @"[FastKV] Failed to read file stat: %@", file);
         return NO;
     }
     
-    if (![self reallocMMSizeWithNeededSize:statInfo.st_size]) {
+    if (![self reallocMMSizeWithNeededSize:statInfo.st_size needResize:YES]) {
+        pthread_mutex_unlock(&_mutexLock);
         return NO;
     }
     
@@ -91,14 +102,19 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
     if (statInfo.st_size == 0) {
         [self resetHeaderWithContentSize:0];
         _cursize = FastKVHeaderSize;
+        pthread_mutex_unlock(&_mutexLock);
         return YES;
     }
     
     char *ptr = (char *)_mmptr;
-    // read file magic code
+    // read mark string
     NSData *data = [NSData dataWithBytes:ptr length:6];
     if (![FastKVMarkString isEqualToString:[NSString stringWithUTF8String:(const char *)data.bytes]]) {
-        NSCAssert(NO, @"Not a FastKV file: %@", file);
+        pthread_mutex_unlock(&_mutexLock);
+        if ([self.delegate respondsToSelector:@selector(fastkv:fileOpenFailed:)]) {
+            [self.delegate fastkv:self fileOpenFailed:[NSError errorWithDomain:FastKVErrorDomain code:FastKVErrorFileFormatError userInfo:nil]];
+        }
+        NSCAssert(NO, @"[FastKV] Not FastKV file: %@", file);
         return NO;
     }
     // read version
@@ -107,17 +123,21 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
     uint32_t ver = 0;
     [data getBytes:&ver length:4];
     
-    // read content-length
+    // read data-length
     ptr += 4;
     data = [NSData dataWithBytes:ptr length:8];
     uint64_t dataLength = 0;
     [data getBytes:&dataLength length:8];
     if (dataLength + FastKVHeaderSize > statInfo.st_size) {
-        NSCAssert(NO, @"illegal file size");
+        pthread_mutex_unlock(&_mutexLock);
+        if ([self.delegate respondsToSelector:@selector(fastkv:fileOpenFailed:)]) {
+            [self.delegate fastkv:self fileOpenFailed:[NSError errorWithDomain:FastKVErrorDomain code:FastKVErrorFileCorrupted userInfo:nil]];
+        }
+        NSCAssert(NO, @"[FastKV] Illegal file size");
         return NO;
     }
     
-    // read contents
+    // read data
     ptr += 8;
     data = [NSData dataWithBytes:ptr length:MIN(dataLength, statInfo.st_size - FastKVHeaderSize)];
     NSError *error;
@@ -398,7 +418,7 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
     [data appendBytes:FastKVSeparatorString length:sizeof(FastKVSeparatorString)];
 
     if (data.length + _cursize >= _mmsize) {
-        [self reallocWithExtraSize:data.length scale:isUpdated?2:1];
+        [self reallocWithExtraSize:data.length updated:isUpdated];
     } else {
         memcpy((char *)_mmptr + _cursize, data.bytes, data.length);
         _cursize += data.length;
@@ -412,7 +432,7 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
 - (BOOL)mapWithSize:(size_t)mapSize {
     _mmptr = mmap(NULL, mapSize,  PROT_READ | PROT_WRITE, MAP_FILE | MAP_SHARED, _fd, 0);
     if (_mmptr == MAP_FAILED) {
-        NSCAssert(NO, @"create mmap failed: %d", errno);
+        NSCAssert(NO, @"[FastKV] Create mmap failed: %d", errno);
         return NO;
     }
     ftruncate(_fd, mapSize);
@@ -420,7 +440,12 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
     return YES;
 }
 
-- (void)reallocWithExtraSize:(size_t)size scale:(CGFloat)scale {
+static inline size_t AllocationSizeWithNeededSize(size_t neededSize) {
+    size_t allocationSize = (neededSize >> 3) + (neededSize < 9 ? 3 : 6);
+    return allocationSize + neededSize;
+}
+
+- (void)reallocWithExtraSize:(size_t)size updated:(BOOL)updated {
     FKVPairList *kvlist = [[FKVPairList alloc] init];
     for (FKVPair *item in _dict.allValues) {
         if (item.valueType != FKVPairTypeRemoved) {
@@ -431,10 +456,10 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
     NSUInteger dataLength = data.length;
     
     size_t totalSize = dataLength + FastKVHeaderSize;
-    size_t neededSize = (totalSize + size) * (size_t)scale;
+    size_t neededSize = updated ? AllocationSizeWithNeededSize(totalSize + size) : totalSize + size;
     if (neededSize > _mmsize) {
         munmap(_mmptr, _mmsize);
-        [self reallocMMSizeWithNeededSize:neededSize];
+        [self reallocMMSizeWithNeededSize:neededSize needResize:!updated];
         [self resetHeaderWithContentSize:0];
     }
     memcpy((char *)_mmptr + FastKVHeaderSize, data.bytes, dataLength);
@@ -443,13 +468,13 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
 }
 
 - (void)reallocWithExtraSize:(size_t)size {
-    [self reallocWithExtraSize:size scale:1];
+    [self reallocWithExtraSize:size updated:NO];
 }
 
-- (BOOL)reallocMMSizeWithNeededSize:(size_t)neededSize {
-    size_t allocationSize = FastKVMinMMSize;
-    while (allocationSize < neededSize) {
-        allocationSize *= 2;
+- (BOOL)reallocMMSizeWithNeededSize:(size_t)neededSize needResize:(BOOL)needResize {
+    size_t allocationSize = needResize;
+    if (neededSize) {
+        allocationSize = AllocationSizeWithNeededSize(neededSize);
     }
     return [self mapWithSize:allocationSize];
 }
