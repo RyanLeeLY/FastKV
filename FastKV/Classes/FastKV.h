@@ -21,7 +21,7 @@ typedef NS_ENUM(NSUInteger, FastKVError) {
 @class FastKV;
 
 @protocol FastKVDelegate <NSObject>
-- (void)fastkv:(FastKV *)fastkv fileOpenFailed:(NSError *)error;
+- (void)fastkv:(FastKV *)fastkv fileError:(NSError *)error;
 @end
 
 @interface FastKV : NSObject
@@ -44,5 +44,11 @@ typedef NS_ENUM(NSUInteger, FastKVError) {
 - (void)setObject:(nullable id)obj forKey:(NSString *)key;
 
 - (void)removeObjectForKey:(NSString *)key;
-- (void)reset;
+
+- (void)removeAllKeys;
+
+/**
+ Clean up local file when file error occurs.
+ */
+- (void)cleanUp;
 @end

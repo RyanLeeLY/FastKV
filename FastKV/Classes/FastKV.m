@@ -26,16 +26,19 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
     size_t _mmsize;
     size_t _cursize;
     
+    NSString *_path;
+    
     NSMutableDictionary<NSString *, FKVPair *> *_dict;
     pthread_mutex_t _mutexLock;
     
 }
+@property (copy, atomic) NSString *path;
 @end
 
 @implementation FastKV
+static FastKV *defaultInstacnce;
 + (instancetype)defaultFastKV {
     static dispatch_once_t onceToken;
-    static FastKV *defaultInstacnce;
     dispatch_once(&onceToken, ^{
         NSString *path = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
         path = [path stringByAppendingPathComponent:@"default.fkv"];
@@ -59,14 +62,13 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
                                                              error:&error]) {
             return nil;
         }
+        self.path = path;
         
         pthread_mutex_init(&_mutexLock, NULL);
         
         if(![self open:path]) {
             return nil;
         }
-        
-
     }
     return self;
 }
@@ -76,8 +78,8 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
     _fd = open([file fileSystemRepresentation], O_RDWR | O_CREAT, 0666);
     if (_fd == 0) {
         pthread_mutex_unlock(&_mutexLock);
-        if ([self.delegate respondsToSelector:@selector(fastkv:fileOpenFailed:)]) {
-            [self.delegate fastkv:self fileOpenFailed:[NSError errorWithDomain:FastKVErrorDomain code:FastKVErrorOpenFailed userInfo:nil]];
+        if ([self.delegate respondsToSelector:@selector(fastkv:fileError:)]) {
+            [self.delegate fastkv:self fileError:[NSError errorWithDomain:FastKVErrorDomain code:FastKVErrorOpenFailed userInfo:nil]];
         }
         NSCAssert(NO, @"[FastKV] Failed to open file: %@", file);
         return NO;
@@ -86,8 +88,8 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
     struct stat statInfo;
     if(fstat(_fd, &statInfo) != 0) {
         pthread_mutex_unlock(&_mutexLock);
-        if ([self.delegate respondsToSelector:@selector(fastkv:fileOpenFailed:)]) {
-            [self.delegate fastkv:self fileOpenFailed:[NSError errorWithDomain:FastKVErrorDomain code:FastKVErrorReadFileFailed userInfo:nil]];
+        if ([self.delegate respondsToSelector:@selector(fastkv:fileError:)]) {
+            [self.delegate fastkv:self fileError:[NSError errorWithDomain:FastKVErrorDomain code:FastKVErrorReadFileFailed userInfo:nil]];
         }
         NSCAssert(NO, @"[FastKV] Failed to read file stat: %@", file);
         return NO;
@@ -111,8 +113,8 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
     NSData *data = [NSData dataWithBytes:ptr length:6];
     if (![FastKVMarkString isEqualToString:[NSString stringWithUTF8String:(const char *)data.bytes]]) {
         pthread_mutex_unlock(&_mutexLock);
-        if ([self.delegate respondsToSelector:@selector(fastkv:fileOpenFailed:)]) {
-            [self.delegate fastkv:self fileOpenFailed:[NSError errorWithDomain:FastKVErrorDomain code:FastKVErrorFileFormatError userInfo:nil]];
+        if ([self.delegate respondsToSelector:@selector(fastkv:fileError:)]) {
+            [self.delegate fastkv:self fileError:[NSError errorWithDomain:FastKVErrorDomain code:FastKVErrorFileFormatError userInfo:nil]];
         }
         NSCAssert(NO, @"[FastKV] Not FastKV file: %@", file);
         return NO;
@@ -130,8 +132,8 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
     [data getBytes:&dataLength length:8];
     if (dataLength + FastKVHeaderSize > statInfo.st_size) {
         pthread_mutex_unlock(&_mutexLock);
-        if ([self.delegate respondsToSelector:@selector(fastkv:fileOpenFailed:)]) {
-            [self.delegate fastkv:self fileOpenFailed:[NSError errorWithDomain:FastKVErrorDomain code:FastKVErrorFileCorrupted userInfo:nil]];
+        if ([self.delegate respondsToSelector:@selector(fastkv:fileError:)]) {
+            [self.delegate fastkv:self fileError:[NSError errorWithDomain:FastKVErrorDomain code:FastKVErrorFileCorrupted userInfo:nil]];
         }
         NSCAssert(NO, @"[FastKV] Illegal file size");
         return NO;
@@ -152,16 +154,6 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
     [self reallocWithExtraSize:0];
     pthread_mutex_unlock(&_mutexLock);
     return YES;
-}
-
-- (void)cleanup {
-    if (_mmptr) {
-        munmap(_mmptr, _cursize);
-    }
-    if (_fd) {
-        ftruncate(_fd, _cursize);
-        close(_fd);
-    }
 }
 
 #pragma mark - primitive types
@@ -255,51 +247,6 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
     return [self _unarchiveValueForClass:octype fromItem:kv];
 }
 
-#pragma mark - read: private
-- (FKVPair *)_itemForKey:(NSString *)key {
-    pthread_mutex_lock(&_mutexLock);
-    
-    FKVPair *kv = _dict[key];
-    
-    pthread_mutex_unlock(&_mutexLock);
-    return kv;
-}
-
-- (Class)_objCType:(FKVPair *)kv {
-    if (kv.objcType) {
-        return NSClassFromString(kv.objcType);
-    }
-    return nil;
-}
-
-- (NSNumber *)_numberValue:(FKVPair *)kv{
-    if (!kv) {
-        return nil;
-    }
-    switch (kv.valueType) {
-        case FKVPairTypeBOOL:   return @(kv.boolVal);
-        case FKVPairTypeInt32:  return @(kv.int32Val);
-        case FKVPairTypeInt64:  return @(kv.int64Val);
-        case FKVPairTypeFloat:  return @(kv.floatVal);
-        case FKVPairTypeDouble: return @(kv.doubleVal);
-        case FKVPairTypeData:
-            return [self _unarchiveValueForClass:[NSNumber class] fromItem:kv];
-        default: return nil;
-    }
-}
-
-- (id)_unarchiveValueForClass:(Class)cls fromItem:(FKVPair *)kv {
-    if (kv.valueType == FKVPairTypeData) {
-        @try {
-            id val = [NSKeyedUnarchiver unarchiveObjectWithData:kv.binaryVal];
-            return [val isKindOfClass:cls] ? val : nil;
-        } @catch (NSException *e) {
-            return nil;
-        }
-    }
-    return nil;
-}
-
 #pragma mark - set: primitive types
 - (void)setBool:(BOOL)val forKey:(NSString *)key {
     FKVPair *kv = [[FKVPair alloc] initWithValueType:FKVPairTypeBOOL objcType:@"NSNumber" key:key version:FastKVVersion];
@@ -374,7 +321,7 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
     [self append:kv];
 }
 
-- (void)reset {
+- (void)removeAllKeys {
     pthread_mutex_lock(&_mutexLock);
 
     [_dict removeAllObjects];
@@ -385,6 +332,33 @@ static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint
     pthread_mutex_unlock(&_mutexLock);
 }
 
+- (void)cleanUp {
+    pthread_mutex_lock(&_mutexLock);
+    if (_mmptr) {
+        munmap(_mmptr, _cursize);
+    }
+    if (_fd) {
+        ftruncate(_fd, _cursize);
+        close(_fd);
+    }
+    _mmsize = 0;
+    _cursize = 0;
+    [_dict removeAllObjects];
+    
+    [[NSFileManager defaultManager] removeItemAtPath:self.path error:NULL];
+    NSError *error = nil;
+    if (![[NSFileManager defaultManager] createDirectoryAtPath:[self.path stringByDeletingLastPathComponent]
+                                   withIntermediateDirectories:YES
+                                                    attributes:nil
+                                                         error:&error]) {
+        return;
+    }
+    pthread_mutex_unlock(&_mutexLock);
+
+    [self open:self.path];
+}
+
+#pragma mark - private
 - (void)resetHeaderWithContentSize:(uint64_t)dataLength {
     char *ptr = (char *)_mmptr;
     memcpy(ptr, [FastKVMarkString dataUsingEncoding:NSUTF8StringEncoding].bytes, 6);
@@ -477,5 +451,49 @@ static inline size_t AllocationSizeWithNeededSize(size_t neededSize) {
         allocationSize = AllocationSizeWithNeededSize(neededSize);
     }
     return [self mapWithSize:allocationSize];
+}
+
+- (FKVPair *)_itemForKey:(NSString *)key {
+    pthread_mutex_lock(&_mutexLock);
+    
+    FKVPair *kv = _dict[key];
+    
+    pthread_mutex_unlock(&_mutexLock);
+    return kv;
+}
+
+- (Class)_objCType:(FKVPair *)kv {
+    if (kv.objcType) {
+        return NSClassFromString(kv.objcType);
+    }
+    return nil;
+}
+
+- (NSNumber *)_numberValue:(FKVPair *)kv{
+    if (!kv) {
+        return nil;
+    }
+    switch (kv.valueType) {
+        case FKVPairTypeBOOL:   return @(kv.boolVal);
+        case FKVPairTypeInt32:  return @(kv.int32Val);
+        case FKVPairTypeInt64:  return @(kv.int64Val);
+        case FKVPairTypeFloat:  return @(kv.floatVal);
+        case FKVPairTypeDouble: return @(kv.doubleVal);
+        case FKVPairTypeData:
+            return [self _unarchiveValueForClass:[NSNumber class] fromItem:kv];
+        default: return nil;
+    }
+}
+
+- (id)_unarchiveValueForClass:(Class)cls fromItem:(FKVPair *)kv {
+    if (kv.valueType == FKVPairTypeData) {
+        @try {
+            id val = [NSKeyedUnarchiver unarchiveObjectWithData:kv.binaryVal];
+            return [val isKindOfClass:cls] ? val : nil;
+        } @catch (NSException *e) {
+            return nil;
+        }
+    }
+    return nil;
 }
 @end
