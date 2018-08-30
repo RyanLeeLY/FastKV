@@ -8,7 +8,7 @@
 
 Pod::Spec.new do |s|
   s.name             = 'FastKV'
-  s.version          = '0.2.0'
+  s.version          = '0.2.1'
   s.summary          = 'FastKV is a real-time and high-performance key-value components.'
 
 # This description is used to generate tags and improve search results.
