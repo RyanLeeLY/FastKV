@@ -18,6 +18,35 @@
 [[FastKV defaultFastKV] objectOfClass:NSString.class forKey:@"key"];
 ```
 
+## Memory Allocation
+`FastKV` provides two kinds of memory allocation strategy.
+
+```
+typedef NS_ENUM(NSUInteger, FastKVMemoryStrategy) {
+    FastKVMemoryStrategyDefalut = 0,
+    FastKVMemoryStrategy1,
+};
+```
+
+**Doubling** `FastKVMemoryStrategyDefalut`
+
+```
+size_t allocationSize = 1;
+    while (allocationSize <= neededSize) {
+        allocationSize *= 2;
+    }
+    return allocationSize;
+```
+ 
+**Linear** `FastKVMemoryStrategy1 `
+
+Reference [python list](https://svn.python.org/projects/python/trunk/Objects/listobject.c)
+
+```
+size_t allocationSize = (neededSize >> 3) + (neededSize < 9 ? 3 : 6);
+return allocationSize + neededSize;
+```
+
 ## Installation
 
 FastKV is available through [CocoaPods](https://cocoapods.org). To install
