@@ -29,7 +29,7 @@
 }
 
 - (void)test {
-    [[FastKV defaultFastKV] removeAllKeys];
+//    [[FastKV defaultFastKV] removeAllKeys];
 //    [self resetDefaults];
 
     FKVPair *fkp = [[FKVPair alloc] init];
@@ -75,6 +75,7 @@ uint64_t dispatch_benchmark(size_t count, void (^block)(void));
     } else if (sender.tag == 3) {
         [[FastKV defaultFastKV] removeObjectForKey:@"testfkv4800"];
     } else if (sender.tag == 4) {
+        [[FastKV defaultFastKV] cleanUp];
         __block int i = 0;
         uint64_t time = dispatch_benchmark(10000, ^{
             [[NSUserDefaults standardUserDefaults] setInteger:[valueArray[i] integerValue] forKey:keyArray[i++]];

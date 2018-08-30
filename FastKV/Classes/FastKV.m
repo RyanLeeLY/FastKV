@@ -11,11 +11,13 @@
 #import <sys/stat.h>
 #import <pthread/pthread.h>
 
+// public const
 const char * FastKVSeperatorString = "$FastKVSeperatorString$";
 
 NSString * const FastKVErrorDomain = @"com.fastkv.error";
 
-static size_t   FastKVMinMMSize = 1024 * 1024; // bytes
+// private const
+static size_t  FastKVDefaultInitialMMSize = 1024 * 1024;
 static NSString *const FastKVMarkString = @"FastKV";
 static uint32_t FastKVVersion  = 1; // mmkv file format version
 static size_t  FastKVHeaderSize = 18; // sizeof("FastKV") + version: sizeof(uint32_t) + dataLength: sizeof(uint64_t)
@@ -27,14 +29,15 @@ static NSString * const FastKVObjcClassNameNSNumber = @"NSNumber";
     void *_mmptr;
     size_t _mmsize;
     size_t _cursize;
+    size_t _initialMMSize;
     
     NSString *_path;
+    FastKVMemoryStrategy _memStrategy;
     
     NSMutableDictionary<NSString *, FKVPair *> *_dict;
     pthread_mutex_t _mutexLock;
     
 }
-@property (copy, atomic) NSString *path;
 @end
 
 @implementation FastKV
@@ -57,7 +60,9 @@ static FastKV *defaultInstacnce;
     return nil;
 }
 
-- (instancetype)initWithFile:(NSString *)path {
+- (instancetype)initWithFile:(NSString *)path
+                 memStrategy:(FastKVMemoryStrategy)memStrategy
+           initialMemorySize:(size_t)initialMemorySize {
     self = [super init];
     if (self) {
         NSError *error = nil;
@@ -67,7 +72,9 @@ static FastKV *defaultInstacnce;
                                                              error:&error]) {
             return nil;
         }
-        self.path = path;
+        _path = path;
+        _memStrategy = memStrategy;
+        _initialMMSize = initialMemorySize;
         
         pthread_mutex_init(&_mutexLock, NULL);
         
@@ -76,6 +83,10 @@ static FastKV *defaultInstacnce;
         }
     }
     return self;
+}
+
+- (instancetype)initWithFile:(NSString *)path {
+    return [self initWithFile:path memStrategy:FastKVMemoryStrategyDefalut initialMemorySize:FastKVDefaultInitialMMSize];
 }
 
 - (BOOL)open:(NSString *)file {
@@ -100,7 +111,7 @@ static FastKV *defaultInstacnce;
         return NO;
     }
     
-    if (![self reallocMMSizeWithNeededSize:statInfo.st_size needResize:YES]) {
+    if (![self reallocMMSizeWithNeededSize:statInfo.st_size]) {
         pthread_mutex_unlock(&_mutexLock);
         return NO;
     }
@@ -331,7 +342,7 @@ static FastKV *defaultInstacnce;
 
     [_dict removeAllObjects];
     munmap(_mmptr, _mmsize);
-    [self mapWithSize:FastKVMinMMSize];
+    [self mapWithSize:_initialMMSize];
     [self resetHeaderWithContentSize:0];
     
     pthread_mutex_unlock(&_mutexLock);
@@ -350,9 +361,9 @@ static FastKV *defaultInstacnce;
     _cursize = 0;
     [_dict removeAllObjects];
     
-    [[NSFileManager defaultManager] removeItemAtPath:self.path error:NULL];
+    [[NSFileManager defaultManager] removeItemAtPath:_path error:NULL];
     NSError *error = nil;
-    if (![[NSFileManager defaultManager] createDirectoryAtPath:[self.path stringByDeletingLastPathComponent]
+    if (![[NSFileManager defaultManager] createDirectoryAtPath:[_path stringByDeletingLastPathComponent]
                                    withIntermediateDirectories:YES
                                                     attributes:nil
                                                          error:&error]) {
@@ -360,7 +371,7 @@ static FastKV *defaultInstacnce;
     }
     pthread_mutex_unlock(&_mutexLock);
 
-    [self open:self.path];
+    [self open:_path];
 }
 
 #pragma mark - private
@@ -409,19 +420,15 @@ static FastKV *defaultInstacnce;
 }
 
 - (BOOL)mapWithSize:(size_t)mapSize {
-    _mmptr = mmap(NULL, mapSize,  PROT_READ | PROT_WRITE, MAP_FILE | MAP_SHARED, _fd, 0);
+    size_t mmsize = MAX(mapSize, _initialMMSize);
+    _mmptr = mmap(NULL, mmsize,  PROT_READ | PROT_WRITE, MAP_FILE | MAP_SHARED, _fd, 0);
     if (_mmptr == MAP_FAILED) {
         NSCAssert(NO, @"[FastKV] Create mmap failed: %d", errno);
         return NO;
     }
-    ftruncate(_fd, mapSize);
-    _mmsize = mapSize;
+    ftruncate(_fd, mmsize);
+    _mmsize = mmsize;
     return YES;
-}
-
-static inline size_t AllocationSizeWithNeededSize(size_t neededSize) {
-    size_t allocationSize = (neededSize >> 3) + (neededSize < 9 ? 3 : 6);
-    return allocationSize + neededSize;
 }
 
 - (void)reallocWithExtraSize:(size_t)size updated:(BOOL)updated {
@@ -435,10 +442,11 @@ static inline size_t AllocationSizeWithNeededSize(size_t neededSize) {
     NSUInteger dataLength = data.length;
     
     size_t totalSize = dataLength + FastKVHeaderSize;
-    size_t neededSize = updated ? AllocationSizeWithNeededSize(totalSize + size) : totalSize + size;
-    if (neededSize > _mmsize) {
+    size_t neededSize = updated ? [self _fkvAllocationSizeWithNeededSize:totalSize + size] : totalSize + size;
+    if (neededSize > _mmsize
+        || (updated && [self _fkvAllocationSizeWithNeededSize:neededSize] > _mmsize)) {
         munmap(_mmptr, _mmsize);
-        [self reallocMMSizeWithNeededSize:neededSize needResize:!updated];
+        [self reallocMMSizeWithNeededSize:neededSize];
         [self resetHeaderWithContentSize:0];
     }
     memcpy((char *)_mmptr + FastKVHeaderSize, data.bytes, dataLength);
@@ -450,12 +458,38 @@ static inline size_t AllocationSizeWithNeededSize(size_t neededSize) {
     [self reallocWithExtraSize:size updated:NO];
 }
 
-- (BOOL)reallocMMSizeWithNeededSize:(size_t)neededSize needResize:(BOOL)needResize {
-    size_t allocationSize = needResize;
-    if (neededSize) {
-        allocationSize = AllocationSizeWithNeededSize(neededSize);
-    }
+- (BOOL)reallocMMSizeWithNeededSize:(size_t)neededSize {
+    size_t allocationSize = neededSize;
+    allocationSize = [self _fkvAllocationSizeWithNeededSize:neededSize];
     return [self mapWithSize:allocationSize];
+}
+
+- (size_t)_fkvAllocationSizeWithNeededSize:(size_t)neededSize {
+    size_t allocationSize = neededSize;
+    switch (_memStrategy) {
+        case FastKVMemoryStrategyDefalut: {
+            allocationSize = FastKVStrategyDefaultAllocationSizeWithNeededSize(neededSize);
+            break;
+        }
+        case FastKVMemoryStrategy1: {
+            allocationSize = FastKVStrategy1AllocationSizeWithNeededSize(neededSize);
+            break;
+        }
+    }
+    return allocationSize;
+}
+
+static inline size_t FastKVStrategyDefaultAllocationSizeWithNeededSize(size_t neededSize) {
+    size_t allocationSize = 1;
+    while (allocationSize <= neededSize) {
+        allocationSize *= 2;
+    }
+    return allocationSize;
+}
+
+static inline size_t FastKVStrategy1AllocationSizeWithNeededSize(size_t neededSize) {
+    size_t allocationSize = (neededSize >> 3) + (neededSize < 9 ? 3 : 6);
+    return allocationSize + neededSize;
 }
 
 - (FKVPair *)_itemForKey:(NSString *)key {

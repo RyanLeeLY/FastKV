@@ -18,6 +18,11 @@ typedef NS_ENUM(NSUInteger, FastKVError) {
     FastKVErrorFileCorrupted = 4004,
 };
 
+typedef NS_ENUM(NSUInteger, FastKVMemoryStrategy) {
+    FastKVMemoryStrategyDefalut = 0,
+    FastKVMemoryStrategy1,
+};
+
 @class FastKV;
 
 @protocol FastKVDelegate <NSObject>
@@ -29,7 +34,10 @@ typedef NS_ENUM(NSUInteger, FastKVError) {
 
 + (instancetype)defaultFastKV;
 
-- (instancetype)initWithFile:(NSString *)path NS_DESIGNATED_INITIALIZER;
+- (instancetype)initWithFile:(NSString *)path;
+- (instancetype)initWithFile:(NSString *)path
+                 memStrategy:(FastKVMemoryStrategy)memStrategy
+           initialMemorySize:(size_t)initialMemorySize NS_DESIGNATED_INITIALIZER;
 
 - (BOOL)boolForKey:(NSString *)key;
 - (NSInteger)integerForKey:(NSString *)key;
