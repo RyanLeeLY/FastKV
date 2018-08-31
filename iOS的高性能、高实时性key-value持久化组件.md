@@ -1,10 +1,5 @@
 > 今年上半年时候看到微信开发团队的这么一篇文章[MMKV--基于 mmap 的 iOS 高性能通用 key-value 组件](https://mp.weixin.qq.com/s/cZQ3FQxRJBx4px1woBaasg)，文中提到了用mmap实现一个高性能KV组件，虽然并没有展示太多的具体代码，但是基本思路讲的还是很清楚的。<br>文章最后提到了开源计划，等了快半年还没看到这个组件源码，于是决定自己试着写一个。
 
-## 轮子
-按照惯例先上轮子，可以先给个小星星哦~
-
-**FastKV** [github](https://github.com/RyanLeeLY/FastKV)
-
 ## 关于NSUserDefaults
 
 在开始写这个组件之前，应该先调研一下NSUserDefaults性能（ps：这里有个失误，事实上我是在写完这个组件以后才调研的）。
