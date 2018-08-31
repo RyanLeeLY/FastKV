@@ -112,9 +112,7 @@ get耗时：**10ms** （NSUserDefults：**48ms**）
 ## 其他开源作品
 **TinyPart —模块化框架**
 [github](https://github.com/RyanLeeLY/TinyPart)
-[掘金](https://juejin.im/post/5ad473dff265da2391489711)
 
 **Coolog —可扩展的log框架** [github](https://github.com/RyanLeeLY/Coolog)
-[掘金](https://juejin.im/post/5b04168f6fb9a07a9e4d90b8)
 
 **WhiteElephantKiller —无用代码扫描工具** [github](https://github.com/RyanLeeLY/WhiteElephantKiller)
