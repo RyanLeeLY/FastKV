@@ -68,32 +68,50 @@ CRC code：倒数16位之前数据的CRC-16循环冗余检测码，用于后期�
 
 ## 空间增长
 
-在MMKV的文章中提到，在append时遇到内存不够用的时候，会进行序列化排重；在序列化排重后还是不够用的话就将文件扩大一倍，直到够用。
+### 分配策略
 
-在只考虑在添加新的key的情况下这确实是一种简单有效的内存分配策略，但是在多次更新key时可能会出现连续的排重操作，下面用一个例子来说明。
+mmap的使用涉及一个内存空间的分配问题，我们在这里提供了两种内存分配策略。
+
+一种策略是在MMKV的文章中提到，在append时遇到内存不够用的时候，会进行序列化排重。在序列化排重后还是不够用的话就将文件扩大一倍，直到够用。
+
+```objective-c
+size_t allocationSize = 1;
+while (allocationSize <= neededSize) {
+    allocationSize *= 2;
+}
+return allocationSize;
+```
+
+另一种策略参考了[python list](https://svn.python.org/projects/python/trunk/Objects/listobject.c)的内存分配实现。
+
+```objective-c
+size_t allocationSize = (neededSize >> 3) + (neededSize < 9 ? 3 : 6);
+return allocationSize + neededSize;
+```
+
+### 内存抖动
+
+在只考虑在添加新的key的情况下这两种内存分配策略比较好的，但是在多次更新key时可能会出现连续的排重操作，下面用一个例子来说明。
 
 如果当前分配的`mmap size`仅仅只比当前正在使用的size多出极少极少一点，以至于接下来任何的append操作都会触发排重，但是由于每次都是对key进行更新操作，如果当前mmap的数据已经是最小集合了（没有任何重复key的数据），于是在排重完成后`mmap size`又刚好够用，不需要重新分配`mmap size`。这时候`mmap size`又是仅仅只比当前正在使用的size多出极少极少一点，然后任何的append又会走一遍上述逻辑。
 
-为了解决这个问题，笔者在append操作的时候附加了一个逻辑：如果当前是对key进行更新操作，那么重新分配`mmap size`的需求大小将会扩大1倍。也就是说如果对key进行更新操作后触发排重，这时`mmap size`的将会按当前需求2倍的大小尝试进行重新分配，以空间来换取时间性能。
+为了解决这个问题，笔者在append操作的时候附加了一个逻辑：正常情况下`allocationSize`是按照当前实际`neededSize`来计算的，如果当前是对key进行更新操作，那么计算`allocationSize`会迭代两次，即第一次计算的`allocationSize`就是第二次计算中的`neededSize`。
 
 ``` objective-c
-if (data.length + _cursize >= _mmsize) {
-	 // 如果是对key是update操作，那么就按照真实需求大小2倍的来尝试进行重新分配。
-    [self reallocWithExtraSize:data.length scale:isUpdated?2:1];
-} else {
-    memcpy((char *)_mmptr + _cursize, data.bytes, data.length);
-    _cursize += data.length;
-
-    uint64_t dataLength = _cursize - FastKVHeaderSize;
-    memcpy((char *)_mmptr + sizeof(uint32_t) + [FastKVMarkString lengthOfBytesUsingEncoding:NSUTF8StringEncoding], &dataLength, 8);
+size_t totalSize = dataLength + FastKVHeaderSize;
+size_t neededSize = updated ? [self _fkvAllocationSizeWithNeededSize:totalSize + size] : totalSize + size;
+if (neededSize > _mmsize
+    || (updated && [self _fkvAllocationSizeWithNeededSize:neededSize] > _mmsize)) {
+    // 重新分配mmap
 }
-    
 ```
 
 ## 其他优化
+
 有一些OC对象的存储是可以优化的，比如NSDate、NSURL，在实际存储时可以当成double和NSString来进行序列化，既提高了性能又减少了空间的占用。
 
 ## 性能比较
+
 测试结果如下（1w次，值类型是NSInteger，环境：iPhone 8 64G, iOS 11.4）
 
 add耗时：**70ms** （NSUserDefults Sync：**3469ms**）
