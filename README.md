@@ -23,12 +23,12 @@
 
 ```
 typedef NS_ENUM(NSUInteger, FastKVMemoryStrategy) {
-    FastKVMemoryStrategyDefalut = 0,
+    FastKVMemoryStrategyDefault = 0,
     FastKVMemoryStrategy1,
 };
 ```
 
-**Doubling** `FastKVMemoryStrategyDefalut`
+**Doubling** `FastKVMemoryStrategyDefault`
 
 ```
 size_t allocationSize = 1;

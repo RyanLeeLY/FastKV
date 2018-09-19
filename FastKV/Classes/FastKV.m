@@ -86,7 +86,7 @@ static FastKV *defaultInstacnce;
 }
 
 - (instancetype)initWithFile:(NSString *)path {
-    return [self initWithFile:path memStrategy:FastKVMemoryStrategyDefalut initialMemorySize:FastKVDefaultInitialMMSize];
+    return [self initWithFile:path memStrategy:FastKVMemoryStrategyDefault initialMemorySize:FastKVDefaultInitialMMSize];
 }
 
 - (BOOL)open:(NSString *)file {
@@ -467,7 +467,7 @@ static FastKV *defaultInstacnce;
 - (size_t)_fkvAllocationSizeWithNeededSize:(size_t)neededSize {
     size_t allocationSize = neededSize;
     switch (_memStrategy) {
-        case FastKVMemoryStrategyDefalut: {
+        case FastKVMemoryStrategyDefault: {
             allocationSize = FastKVStrategyDefaultAllocationSizeWithNeededSize(neededSize);
             break;
         }

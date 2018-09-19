@@ -19,7 +19,7 @@ typedef NS_ENUM(NSUInteger, FastKVError) {
 };
 
 typedef NS_ENUM(NSUInteger, FastKVMemoryStrategy) {
-    FastKVMemoryStrategyDefalut = 0,
+    FastKVMemoryStrategyDefault = 0,
     FastKVMemoryStrategy1,
 };
 
